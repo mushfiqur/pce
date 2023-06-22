@@ -1,0 +1,30 @@
+int main(){
+	int num_vars = 1;
+	int tot_sim_steps = 30;
+	
+	BasisPolySet basis_poly = BasisPolySet(num_vars, 4);
+
+	const_node c1 = const_node(basis_poly.set_size, tot_sim_steps, "c1");
+	
+	input_node b = input_node(basis_poly, tot_sim_steps, 1, "x");
+	delay_node out_d = delay_node(basis_poly.set_size, tot_sim_steps, "y_d");
+	mult_node out_dc = mult_node(basis_poly, tot_sim_steps, "y_dc");
+	add_node out = add_node(basis_poly.set_size, tot_sim_steps, "out");
+
+	c1.init(0.5);
+
+	out_d.init(&out);
+	out_dc.init(&c1, &out_d);
+	out.init(&out_dc, &b);
+
+	Simulator sim = Simulator();
+	sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
+	sim.run_sim(&b);
+	out.print_stats();
+
+	sim.set_sim_params(PCE, tot_sim_steps);
+	sim.run_sim(&b);
+	out.print_pwr(basis_poly);
+
+	return 0;
+}

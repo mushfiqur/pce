@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Valgrind Log",
+            "command": "valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main > /home/mushf/pce/src/log 2>&1 && code /home/mushf/pce/src/log",
+            "type": "shell",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "make",
+            "command": "make -f /home/mushf/pce/Makefile"
+        }
+    ]
+}

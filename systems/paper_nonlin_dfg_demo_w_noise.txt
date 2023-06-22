@@ -1,0 +1,61 @@
+int main(){
+	int num_vars = 5;
+	int tot_sim_steps = 15;
+	
+	std::cout << "Generating polynomials... " << std::endl;;
+	BasisPolySet basis_poly(num_vars, 2);
+	std::cout << "DONE\n" << std::endl;
+	
+	// Define Netlist
+	input_node u = input_node(basis_poly.set_size, tot_sim_steps, 1, "u");
+	input_node n1 = input_node(basis_poly.set_size, tot_sim_steps, 2, "n1");
+	input_node n2 = input_node(basis_poly.set_size, tot_sim_steps, 3, "n2");
+	input_node n3 = input_node(basis_poly.set_size, tot_sim_steps, 4, "n3");
+	input_node n4 = input_node(basis_poly.set_size, tot_sim_steps, 5, "n4");
+	
+	const_node c1 = const_node(0.05, basis_poly.set_size, tot_sim_steps, "c1");
+	const_node c2 = const_node(0.25, basis_poly.set_size, tot_sim_steps, "c2");
+	const_node c3 = const_node(0.6, basis_poly.set_size, tot_sim_steps, "c3");
+
+	mult_node a = mult_node(basis_poly, tot_sim_steps, "a");
+	add_node a_n = add_node(basis_poly.set_size, tot_sim_steps, "a_n");
+	delay_node b = delay_node(basis_poly.set_size, tot_sim_steps, "b");
+	mult_node c = mult_node(basis_poly, tot_sim_steps, "c");
+	add_node c_n = add_node(basis_poly.set_size, tot_sim_steps, "c_n");
+	add_node d = add_node(basis_poly.set_size, tot_sim_steps, "d");
+	add_node y = add_node(basis_poly.set_size, tot_sim_steps, "y");
+	delay_node y_d = delay_node(basis_poly.set_size, tot_sim_steps, "y_d");
+	mult_node y_d_c = mult_node(basis_poly, tot_sim_steps, "y_d_c");
+	add_node y_d_c_n = add_node(basis_poly.set_size, tot_sim_steps, "y_d_c_n");
+	mult_node e = mult_node(basis_poly, tot_sim_steps, "e");
+	add_node e_n = add_node(basis_poly.set_size, tot_sim_steps, "e_n");
+
+	// Connect/Init Netlist
+	u.init(basis_poly.get_var_idx(u.node_id));
+	n1.init(basis_poly.get_var_idx(n1.node_id));
+	n2.init(basis_poly.get_var_idx(n2.node_id));
+	n3.init(basis_poly.get_var_idx(n3.node_id));
+	n4.init(basis_poly.get_var_idx(n4.node_id));
+
+	a.init(&u, &c1);
+	a_n.init(&a, &n1);
+	b.init(&u);
+	c.init(&b, &c2);
+	c_n.init(&c, &n2);
+	d.init(&c_n, &e_n);
+	y.init(&d, &y_d_c_n);
+	y_d.init(&y);
+	y_d_c.init(&y_d, &c3);
+	y_d_c_n.init(&y_d_c, &n3);
+	e.init(&a_n, &y_d);
+	e_n.init(&e, &n4);
+
+	// Run Sim
+	process_node(&u, tot_sim_steps);
+
+	//// PRINTING ////
+	// y.print(basis_poly);
+	y.print_pwr(basis_poly);
+	// std::cout << std::endl;
+	return 0;
+}
