@@ -8,4 +8,9 @@ typedef enum {
 	MONTE_CARLO
 } SimType;
 
+typedef enum{
+	UNIFORM,
+	GAUSSIAN
+} RandVarDist;
+
 #endif

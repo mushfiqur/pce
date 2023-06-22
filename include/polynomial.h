@@ -5,6 +5,8 @@
 #include <vector>
 #include <iostream>
 
+#include "../include/enums.h"
+
 class var {
 	public:
 	int id;
@@ -52,8 +54,8 @@ void tensor_prod(std::vector<polynomial*>& set_a, std::vector<polynomial*>& set_
 void mult_poly(polynomial* p, polynomial* q, polynomial* result);
 void mult_mono(monomial* a, monomial* b, monomial* result);
 
-double expect_poly(polynomial* p);
-double expect_mono(monomial* m);
-double expect_term(term* t);
+double expect_poly(polynomial* p, RandVarDist dist_type);
+double expect_mono(monomial* m, RandVarDist dist_type);
+double expect_term(term* t, RandVarDist dist_type);
 
 #endif

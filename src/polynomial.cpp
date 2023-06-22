@@ -182,12 +182,12 @@ void mult_mono(monomial* a, monomial* b, monomial* result){
 	}
 }
 
-double expect_poly(polynomial* p){
+double expect_poly(polynomial* p, RandVarDist dist_type){
 	double ret = 0.0;
 
 	polynomial* p_iter = p;
 	while (p_iter != nullptr){
-		ret += expect_mono(p_iter->m);
+		ret += expect_mono(p_iter->m, dist_type);
 
 		p_iter = p_iter->next;
 	}
@@ -196,7 +196,7 @@ double expect_poly(polynomial* p){
 	return ret;
 }
 
-double expect_mono(monomial* m){
+double expect_mono(monomial* m, RandVarDist dist_type){
 	double ret = m->coeff;
 	for(int i = 0; i < m->arr.size(); i++){
 		if(m->arr[i]->exp%2 != 0){
@@ -204,28 +204,27 @@ double expect_mono(monomial* m){
 			break;
 		}
 		else{
-			ret *= expect_term(m->arr[i]);
+			ret *= expect_term(m->arr[i], dist_type);
 		}
 	}
 
 	return ret;
 }
 
-double expect_term(term* t){
-#ifdef USE_HERMITE_POLYS
-	if(t->exp % 2 == 0){
-		int k = t->exp / 2;
-		double numerator = factorial(2*k);
+double expect_term(term* t, RandVarDist dist_type){
+	if(dist_type == GAUSSIAN){
+		if(t->exp % 2 == 0){
+			int k = t->exp / 2;
+			double numerator = factorial(2*k);
 
-		double denom = std::pow(2.0, k) * factorial(k);
-		return numerator / denom;
+			double denom = std::pow(2.0, k) * factorial(k);
+			return numerator / denom;
+		}
+		else{
+			return 0.0;
+		}
 	}
-	else{
-		return 0.0;
+	else {
+		return (std::pow(t->v->b, t->exp + 1) - std::pow(t->v->a, t->exp + 1)) / ((t->v->b - t->v->a) * (t->exp + 1));
 	}
-#endif
-
-#ifdef USE_LEGENDRE_POLYS
-	return (std::pow(t->v->b, t->exp + 1) - std::pow(t->v->a, t->exp + 1)) / ((t->v->b - t->v->a) * (t->exp + 1));
-#endif
 }

@@ -17,7 +17,7 @@ void Simulator::add_node(dfg_node& n){
 
 void Simulator::set_node_sim_params(){
 	for(int i = 0; i < this->nodes_arr.size(); i++){
-		this->nodes_arr[i]->set_sim_params(this->tot_sim_steps, this->mc_samples, this->sim_t);
+		this->nodes_arr[i]->set_sim_params(this->tot_sim_steps, this->mc_samples, this->bp_set_ptr->set_size, this->sim_t);
 	}
 }
 

@@ -14,26 +14,26 @@
 // valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main > log 2>&1
 
 int main(){
-	int num_vars = 1;
-	int tot_sim_steps = 30;
-	
-	BasisPolySet basis_poly = BasisPolySet(num_vars, 4);
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 	
 	// Define Netlist
-	input_node u = input_node(basis_poly, tot_sim_steps, 1, "u");
+	input_node u = input_node(basis_poly, 1, "u");
 	
-	const_node c1 = const_node(basis_poly.set_size, tot_sim_steps, "c1");
-	const_node c2 = const_node(basis_poly.set_size, tot_sim_steps, "c2");
-	const_node c3 = const_node(basis_poly.set_size, tot_sim_steps, "c3");
+	const_node c1 = const_node("c1");
+	const_node c2 = const_node("c2");
+	const_node c3 = const_node("c3");
 
-	mult_node a = mult_node(basis_poly, tot_sim_steps, "a");
-	delay_node b = delay_node(basis_poly.set_size, tot_sim_steps, "b");
-	mult_node c = mult_node(basis_poly, tot_sim_steps, "c");
-	add_node d = add_node(basis_poly.set_size, tot_sim_steps, "d");
-	add_node y = add_node(basis_poly.set_size, tot_sim_steps, "y");
-	delay_node y_d = delay_node(basis_poly.set_size, tot_sim_steps, "y_d");
-	mult_node y_d_c = mult_node(basis_poly, tot_sim_steps, "y_d_c");
-	mult_node e = mult_node(basis_poly, tot_sim_steps, "e");
+	mult_node a = mult_node(basis_poly, "a");
+	delay_node b = delay_node("b");
+	mult_node c = mult_node(basis_poly, "c");
+	add_node d = add_node("d");
+	add_node y = add_node("y");
+	delay_node y_d = delay_node("y_d");
+	mult_node y_d_c = mult_node(basis_poly, "y_d_c");
+	mult_node e = mult_node(basis_poly, "e");
+
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(4);
 
 	// Connect/Init Netlist
 	c1.init(0.05);
@@ -67,6 +67,7 @@ int main(){
 	sim.add_node(e);
 
 	// Run Sim
+	int tot_sim_steps = 30;
 	sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
 	sim.run_sim(&u);
 

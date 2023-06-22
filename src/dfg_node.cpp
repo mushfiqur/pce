@@ -1,11 +1,10 @@
 #include "../include/dfg_node.h"
 
-dfg_node::dfg_node(NodeType t, int set_size, int tot_sim_steps, std::string label, int node_id) {
+dfg_node::dfg_node(NodeType t, std::string label, int node_id) {
 	this->t = t;
 	// this->pce_coeffs = std::vector<double>(set_size, 0.0);
 	// this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(set_size, 0.0));
 	// this->real_vals = std::vector<double>(tot_sim_steps, 0.0);
-	this->basis_set_size = set_size;
 	this->node_id = node_id;
 	this->lhs = nullptr;
 	this->rhs = nullptr;
@@ -146,12 +145,12 @@ void dfg_node::get_pce_stats(std::vector<double>& mean_arr, std::vector<double>&
 }
 
 
-void dfg_node::set_sim_params(int tot_sim_steps, int mc_samples, SimType sim_type){
+void dfg_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
 	this->sim_type = sim_type;
 	this->last_exec_time = -1;
 
 	if(sim_type == PCE){
-		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(this->basis_set_size, 0.0));
+		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 	}
 	else{
 		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
@@ -171,16 +170,22 @@ void dfg_node::set_sim_params(int tot_sim_steps, int mc_samples, SimType sim_typ
 
 ///////////////////////////////////////////////////
 
-input_node::input_node(BasisPolySet& bp_set, int tot_sim_steps, int node_id, std::string label) : dfg_node(INPUT, bp_set.set_size, tot_sim_steps, label, node_id){
-	for(int i = 0; i < bp_set.basis_polys.size(); i++){
-		if(bp_set.basis_polys[i]->max_exp == 1){
-			if(bp_set.basis_polys[i]->m->arr[0]->v->id == this->node_id){
-				this->v = bp_set.basis_polys[i]->m->arr[0]->v;
-				break;
-			}
+input_node::input_node(BasisPolySet& bp_set, int node_id, std::string label) : dfg_node(INPUT, label, node_id){
+	bool var_exists = false;
+	for(int i = 0; i < bp_set.var_arr.size(); i++){
+		if(bp_set.var_arr[i]->id == node_id){
+			var_exists = true;
+			this->v = bp_set.var_arr[i];
+			break;
 		}
 	}
 
+	if(!var_exists){
+		var* v = new var(1, -1, node_id);
+		bp_set.add_variable(v);
+		this->v = v;
+	}
+	
 	std::random_device rd;
 	this->mt = std::mt19937(rd());
 	this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
@@ -226,7 +231,7 @@ void input_node::process(int curr_timestamp){
 
 ///////////////////////////////////////////////////
 
-mult_node::mult_node(BasisPolySet& bp_set, int tot_sim_steps, std::string label) : dfg_node(MULT, bp_set.set_size, tot_sim_steps, label){
+mult_node::mult_node(BasisPolySet& bp_set, std::string label) : dfg_node(MULT, label){
 	this->ref_exp_table = &bp_set.expt_table;
 	this->ref_exp_sqr_table = &bp_set.poly_sqr_expt;
 };

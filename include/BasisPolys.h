@@ -6,11 +6,8 @@
 #include <string>
 #include <math.h>
 
+#include "../include/enums.h"
 #include "../include/polynomial.h"
-
-
-// #define USE_HERMITE_POLYS
-#define USE_LEGENDRE_POLYS
 
 class BasisPolySet {
 	public:
@@ -24,9 +21,13 @@ class BasisPolySet {
 	int num_vars;
 	int order;
 	int set_size;
+	RandVarDist dist_t;
 
-	BasisPolySet(int num_vars, int order);
+	BasisPolySet(RandVarDist dist_type);
 	~BasisPolySet();
+
+	void add_variable(var* v);
+	void generate_polys(int order);
 	
 	int get_var_idx(int id);
 	
