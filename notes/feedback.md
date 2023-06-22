@@ -55,11 +55,7 @@ Then the output PC expansions look like:
 
 
 For First case
-$$
-Variance = \frac{1}{3} \cdot \frac{1}{1 - {\alpha}^2}
-$$
+$$Variance = \frac{1}{3} \cdot \frac{1}{1 - {\alpha}^2}$$
 
 For Second case
-$$
-Variance = \frac{1}{3} \cdot {(\frac{1}{1 - \alpha})}^2
-$$
+$$Variance = \frac{1}{3} \cdot {(\frac{1}{1 - \alpha})}^2$$
