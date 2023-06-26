@@ -4,6 +4,7 @@ BasisPolySet::BasisPolySet(RandVarDist dist_type){
 	this->dist_t = dist_type;
 	this->num_vars = 0;
 	this->order = 2;
+	this->max_var_idx = -1;
 	// this->set_size = 0;
 }
 
@@ -19,6 +20,10 @@ BasisPolySet::~BasisPolySet(){
 void BasisPolySet::add_variable(var* v){
 	this->var_arr.push_back(v);
 	this->num_vars++;
+
+	if(v->id > this->max_var_idx){
+		this->max_var_idx = v->id;
+	}
 }
 
 void BasisPolySet::generate_polys(int order){
@@ -36,7 +41,7 @@ void BasisPolySet::generate_polys(int order){
 	polynomial* p;
 	for(int i = 0; i < this->num_vars; i++){
 		if(this->dist_t == GAUSSIAN){
-			std::cout << "USING HERMITE POLYS" << std::endl;
+			// std::cout << "USING HERMITE POLYS" << std::endl;
 			univariate_polys[i] = std::vector<polynomial*>();
 
 			p = new polynomial();
@@ -94,7 +99,7 @@ void BasisPolySet::generate_polys(int order){
 		}
 
 		if(this->dist_t == UNIFORM){
-			std::cout << "USING LEGENDRE POLYS" << std::endl;
+			// std::cout << "USING LEGENDRE POLYS" << std::endl;
 			univariate_polys[i] = std::vector<polynomial*>();
 
 			p = new polynomial();
@@ -211,6 +216,17 @@ void BasisPolySet::gen_poly_expt_table(){
 	for(int i = 0; i < this->set_size; i++){
 		this->poly_expt[i] = expect_poly(this->basis_polys[i], this->dist_t);
 	}
+}
+
+int BasisPolySet::get_new_var_id(){
+	if(this->max_var_idx + 1 == 0){
+		this->max_var_idx = 1;
+	}
+	else{
+		this->max_var_idx++;
+	}
+	
+	return this->max_var_idx;
 }
 
 int BasisPolySet::get_var_idx(int id){

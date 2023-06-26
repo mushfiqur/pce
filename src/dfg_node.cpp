@@ -2,14 +2,15 @@
 
 dfg_node::dfg_node(NodeType t, std::string label, int node_id) {
 	this->t = t;
-	// this->pce_coeffs = std::vector<double>(set_size, 0.0);
-	// this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(set_size, 0.0));
-	// this->real_vals = std::vector<double>(tot_sim_steps, 0.0);
 	this->node_id = node_id;
 	this->lhs = nullptr;
 	this->rhs = nullptr;
 	this->last_exec_time = -1;
 	this->label = label;
+	this->bitwidth = -1;
+
+	this->head = this;
+	this->tail = this;
 }
 
 void dfg_node::process(int curr_timestamp){
@@ -90,15 +91,10 @@ bool dfg_node::node_args_ready(int curr_timestamp){
 
 	return (lhs_ready && rhs_ready);
 
-	// if((this->lhs == nullptr && this->rhs == nullptr) || 
-	// ((this->lhs != nullptr && (this->lhs->last_exec_time == curr_timestamp)) && 
-	// 	this->rhs != nullptr && (this->rhs->last_exec_time == curr_timestamp)))
-	// {
-	// 	return true;
-	// }
-	// else{
-	// 	return false;
-	// }
+}
+
+void dfg_node::set_bitwidth(int width){
+	this->bitwidth = width;
 }
 
 void dfg_node::print_pwr(BasisPolySet& bp_set){
@@ -126,7 +122,8 @@ void dfg_node::get_mc_stats(std::vector<double>& mean_arr, std::vector<double>& 
 	for(int t = 0; t < this->mc_samples.size(); t++){
 		var_arr[t] = 0.0;
 		for(int i = 0; i < this->mc_samples[t].size(); i++){
-			var_arr[t] += std::pow(this->mc_samples[t][i] - mean_arr[t], 2.0);
+			var_arr[t] += std::pow(this->mc_samples[t][i], 2.0);
+			// var_arr[t] += std::pow(this->mc_samples[t][i] - mean_arr[t], 2.0);
 		}
 
 		var_arr[t] /= (this->mc_samples[t].size());
@@ -155,34 +152,25 @@ void dfg_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_s
 	else{
 		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
 	}
-
-	if(this->t == INPUT){
-		input_node* n;
-		n = static_cast<input_node*>(this);
-		n->set_sim_params();
-	}
-	else if(this->t == CONST){
-		const_node* n;
-		n = static_cast<const_node*>(this);
-		n->set_sim_params();
-	}
 }
 
 ///////////////////////////////////////////////////
 
-input_node::input_node(BasisPolySet& bp_set, int node_id, std::string label) : dfg_node(INPUT, label, node_id){
+input_node::input_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT, label, node_id){
+	this->bp_set_ptr = bp_set;
+	
 	bool var_exists = false;
-	for(int i = 0; i < bp_set.var_arr.size(); i++){
-		if(bp_set.var_arr[i]->id == node_id){
+	for(int i = 0; i < bp_set->var_arr.size(); i++){
+		if(bp_set->var_arr[i]->id == node_id){
 			var_exists = true;
-			this->v = bp_set.var_arr[i];
+			this->v = bp_set->var_arr[i];
 			break;
 		}
 	}
 
 	if(!var_exists){
 		var* v = new var(1, -1, node_id);
-		bp_set.add_variable(v);
+		bp_set->add_variable(v);
 		this->v = v;
 	}
 	
@@ -193,24 +181,25 @@ input_node::input_node(BasisPolySet& bp_set, int node_id, std::string label) : d
 
 
 void input_node::init(){
-	// this->sim_type = sim_type;
 
-	// for(int i = 0; i < this->pce_coeffs.size(); i++){
-	// 	this->pce_coeffs[i][idx] = 1.0;
-
-	// }
 }
 
-void input_node::set_sim_params(){
+void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+
 	if(sim_type == PCE){
+		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+
 		for(int t = 0; t < this->pce_coeffs.size(); t++){
-			this->pce_coeffs[t][this->v->id] = 1.0;
+			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = 1.0;
 		}
 	}
 	else{
+		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
 		std::vector<double> samples(this->mc_samples[0].size(), 0.0);
 
-		for(int i = 0; i < samples.size(); i++)		{
+		for(int i = 0; i < samples.size(); i++){
 			samples[i] = this->dist(this->mt);
 		}
 
@@ -220,28 +209,88 @@ void input_node::set_sim_params(){
 	}
 }
 
-
 void input_node::process(int curr_timestamp){
 	this->last_exec_time = curr_timestamp;
+}
 
-	// if(this->sim_type == MONTE_CARLO){
-	// 	this->real_vals[curr_timestamp] = this->dist(this->mt);
-	// }
+void input_node::set_bitwidth(int width){
+	this->bitwidth = width;
+
+	this->v->a = -1.0 * std::pow(2.0, -1*this->bitwidth);
+	this->v->b = 0.0;
+
+	this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
 }
 
 ///////////////////////////////////////////////////
 
-mult_node::mult_node(BasisPolySet& bp_set, std::string label) : dfg_node(MULT, label){
-	this->ref_exp_table = &bp_set.expt_table;
-	this->ref_exp_sqr_table = &bp_set.poly_sqr_expt;
+mult_node::mult_node(BasisPolySet* bp_set, std::string label) : dfg_node(MULT, label){
+	// this->ref_exp_table = &bp_set.expt_table;
+	// this->ref_exp_sqr_table = &bp_set.poly_sqr_expt;
+	this->bp_set_ptr = bp_set;
 };
 
 void mult_node::init(dfg_node* lhs, dfg_node* rhs){
-	this->lhs = lhs;
-	this->rhs = rhs;
+	this->head->lhs = lhs->tail;
+	this->head->rhs = rhs->tail;
 
-	lhs->add_next_node(this);
-	rhs->add_next_node(this);
+	lhs->tail->add_next_node(this->head);
+	rhs->tail->add_next_node(this->head);
+}
+
+void mult_node::set_bitwidth(int width){
+	// add_node a_n = add_node("a_n");
+	// input_node n1 = input_node(basis_poly, 2, "n1");
+
+	int n_noise_id = this->bp_set_ptr->get_new_var_id();
+	std::string lbl = "n" + std::to_string(n_noise_id);
+	input_node* n_noise = new input_node(this->bp_set_ptr, n_noise_id, lbl);
+	n_noise->set_bitwidth(width);
+
+	this->tail = new add_node(this->label + "_n");
+	this->tail->lhs = this;
+	this->tail->rhs = n_noise;
+
+	for(int i = 0; i < this->next_nodes.size(); i++){
+		this->tail->add_next_node(this->next_nodes[i]);
+
+		if(this->next_nodes[i]->lhs == this){
+			this->next_nodes[i]->lhs = this->tail;
+		}
+
+		if(this->next_nodes[i]->rhs == this){
+			this->next_nodes[i]->rhs = this->tail;
+		}
+		
+
+		for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
+			if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
+				this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
+			}
+		}
+	}
+	this->next_nodes.clear();
+
+	this->add_next_node(this->tail);
+	n_noise->add_next_node(this->tail);
+
+}
+
+void mult_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+
+	if(sim_type == PCE){
+		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+	}
+	else{
+		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
+	}
+	
+	if(this->tail != this){
+		this->tail->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
+		this->tail->rhs->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
+	}
 }
 
 void mult_node::process(int curr_timestamp){
@@ -277,10 +326,11 @@ void mult_node::process_pce_sim(int curr_timestamp){
 		for(int k = 0; k < this->pce_coeffs[curr_timestamp].size(); k++){
 			for(int i = 0; i < lhs->pce_coeffs[curr_timestamp].size(); i++){
 				for(int j = 0; j < rhs->pce_coeffs[curr_timestamp].size(); j++){
-					this->pce_coeffs[curr_timestamp][k] += lhs->pce_coeffs[curr_timestamp][i] * rhs->pce_coeffs[curr_timestamp][j] * (*ref_exp_table)[i][j][k];
+					this->pce_coeffs[curr_timestamp][k] += lhs->pce_coeffs[curr_timestamp][i] * rhs->pce_coeffs[curr_timestamp][j] * this->bp_set_ptr->expt_table[i][j][k];
 				}
 			}
-			this->pce_coeffs[curr_timestamp][k] /= (*ref_exp_sqr_table)[k];
+			this->pce_coeffs[curr_timestamp][k] /= this->bp_set_ptr->poly_sqr_expt[k];
+			// this->pce_coeffs[curr_timestamp][k] /= (*ref_exp_sqr_table)[k];
 		}
 	}
 }
@@ -311,15 +361,23 @@ void mult_node::process_mc_sim(int curr_timestamp){
 	// this->real_vals[curr_timestamp] = lhs->real_vals[curr_timestamp] * rhs->real_vals[curr_timestamp];
 }
 
+mult_node::~mult_node(){
+	if(this->tail != this){
+		delete this->tail->rhs;
+		delete this->tail;
+	}
+}
+
 ///////////////////////////////////////////////////
 
 void add_node::init(dfg_node* lhs, dfg_node* rhs){
-	this->lhs = lhs;
-	this->rhs = rhs;
+	this->head->lhs = lhs->tail;
+	this->head->rhs = rhs->tail;
 
-	lhs->add_next_node(this);
-	rhs->add_next_node(this);
+	lhs->tail->add_next_node(this->head);
+	rhs->tail->add_next_node(this->head);
 }
+
 
 void add_node::process(int curr_timestamp){
 	this->last_exec_time = curr_timestamp;
@@ -329,6 +387,15 @@ void add_node::process(int curr_timestamp){
 	}
 	else{
 		process_mc_sim(curr_timestamp);
+	}
+}
+
+void add_node::set_bitwidth(int width){
+	if(width == -1){
+		this->bitwidth = lhs->tail->bitwidth > rhs->tail->bitwidth ? lhs->tail->bitwidth : rhs->tail->bitwidth;
+	}
+	else{
+		this->bitwidth = width;
 	}
 }
 
@@ -347,11 +414,20 @@ void add_node::process_pce_sim(int curr_timestamp){
 ///////////////////////////////////////////////////
 
 void sub_node::init(dfg_node* lhs, dfg_node* rhs){
-	this->lhs = lhs;
-	this->rhs = rhs;
+	this->head->lhs = lhs->tail;
+	this->head->rhs = rhs->tail;
 
-	lhs->add_next_node(this);
-	rhs->add_next_node(this);
+	lhs->tail->add_next_node(this->head);
+	rhs->tail->add_next_node(this->head);
+}
+
+void sub_node::set_bitwidth(int width){
+	if(width == -1){
+		this->bitwidth = lhs->tail->bitwidth > rhs->tail->bitwidth ? lhs->tail->bitwidth : rhs->tail->bitwidth;
+	}
+	else{
+		this->bitwidth = width;
+	}
 }
 
 void sub_node::process(int curr_timestamp){
@@ -381,10 +457,19 @@ void sub_node::process_mc_sim(int curr_timestamp){
 ///////////////////////////////////////////////////
 
 void delay_node::init(dfg_node* prev_node){
-	this->lhs = prev_node;
-	this->rhs = nullptr;
+	this->head->lhs = prev_node->tail;
+	this->head->rhs = nullptr;
 
-	this->lhs->add_next_node(this);
+	prev_node->tail->add_next_node(this);
+}
+
+void delay_node::set_bitwidth(int width){
+	if(width == -1){
+		this->bitwidth = lhs->tail->bitwidth;
+	}
+	else{
+		this->bitwidth = width;
+	}
 }
 
 void delay_node::process(int curr_timestamp){
@@ -430,14 +515,19 @@ void const_node::init(double val){
 	this->val = val;
 }
 
-void const_node::set_sim_params(){
+void const_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+	
 	if(this->sim_type == PCE){
+		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 		for(int i = 0; i < pce_coeffs.size(); i++){
 			this->pce_coeffs[i][0] = this->val;
 		}
 	}
 	else{
-		for(int i = 0; i < mc_samples.size(); i++){
+		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
+		for(int i = 0; i < this->mc_samples.size(); i++){
 			this->mc_samples[i][0] = this->val;
 		}
 	}

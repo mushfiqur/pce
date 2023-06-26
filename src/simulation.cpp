@@ -1,8 +1,9 @@
 #include "../include/simulation.h"
 
-Simulator::Simulator(){
+Simulator::Simulator(int initial_bitwidth){
 	this->pce_sim_done = false;
 	this->mc_sim_done = false;
+	this->initial_bitwidth = initial_bitwidth;
 }
 
 void Simulator::set_sim_params(SimType sim_t, int tot_sim_steps, int mc_samples){
@@ -13,12 +14,27 @@ void Simulator::set_sim_params(SimType sim_t, int tot_sim_steps, int mc_samples)
 
 void Simulator::add_node(dfg_node& n){
 	this->nodes_arr.push_back(&n);
+	if(n.t == INPUT){
+		this->curr_config.push_back({.n = &n, .bitwidth=this->initial_bitwidth});
+	}
 }
 
 void Simulator::set_node_sim_params(){
 	for(int i = 0; i < this->nodes_arr.size(); i++){
 		this->nodes_arr[i]->set_sim_params(this->tot_sim_steps, this->mc_samples, this->bp_set_ptr->set_size, this->sim_t);
 	}
+}
+
+void Simulator::set_input_bitwidths(){
+	// Regenerate basis poly tables
+	// for(int i = 0; i < this->curr_config.size(); i++){
+	// 	this->curr_config[i].n->set_bitwidth(this->curr_config[i].bitwidth);
+	// }
+}
+
+void Simulator::calc_bitwidths(){
+	 // TODO:
+	
 }
 
 void Simulator::run_sim(dfg_node* n){
@@ -116,9 +132,9 @@ void Simulator::plot(){
 		if(this->mc_sim_done){
 			this->nodes_to_plot[i]->get_mc_stats(mean_arr, var_arr);
 
-			plot_cmd.append(" '-' with linespoints dt \".\" lc rgb 'blue'");
-			plot_cmd.append(" title 'MC Mean',");
-			plot_data_arr.push_back(mean_arr);
+			// plot_cmd.append(" '-' with linespoints dt \".\" lc rgb 'blue'");
+			// plot_cmd.append(" title 'MC Mean',");
+			// plot_data_arr.push_back(mean_arr);
 			
 			plot_cmd.append(" '-' with linespoints dt \".\" lc rgb 'blue'");
 			plot_cmd.append(" title 'MC Var.',");
@@ -127,9 +143,9 @@ void Simulator::plot(){
 		if(this->pce_sim_done){
 			this->nodes_to_plot[i]->get_pce_stats(mean_arr, var_arr, *bp_set_ptr);
 
-			plot_cmd.append(" '-' with lines lc rgb 'red'");
-			plot_cmd.append(" title 'PCE Mean',");
-			plot_data_arr.push_back(mean_arr);
+			// plot_cmd.append(" '-' with lines lc rgb 'red'");
+			// plot_cmd.append(" title 'PCE Mean',");
+			// plot_data_arr.push_back(mean_arr);
 			
 			plot_cmd.append(" '-' with lines lc rgb '#005A32'");
 			plot_cmd.append(" title 'PCE Var.',");

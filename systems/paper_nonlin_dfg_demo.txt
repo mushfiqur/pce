@@ -1,53 +1,71 @@
 int main(){
-	int num_vars = 1;
-	int tot_sim_steps = 2;
-	
-	BasisPolySet basis_poly(num_vars, 4);
-	basis_poly.print_polys();
-	std::cout << "--------------\n" << std::endl;
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 	
 	// Define Netlist
-	input_node u = input_node(basis_poly, tot_sim_steps, 1, "u");
+	input_node u = input_node(&basis_poly, 1, "u");
 	
-	const_node c1 = const_node(0.05, basis_poly.set_size, tot_sim_steps, "c1");
-	const_node c2 = const_node(0.25, basis_poly.set_size, tot_sim_steps, "c2");
-	const_node c3 = const_node(0.6, basis_poly.set_size, tot_sim_steps, "c3");
+	const_node c1 = const_node("c1");
+	const_node c2 = const_node("c2");
+	const_node c3 = const_node("c3");
 
-	mult_node a = mult_node(basis_poly, tot_sim_steps, "a");
-	delay_node b = delay_node(basis_poly.set_size, tot_sim_steps, "b");
-	mult_node c = mult_node(basis_poly, tot_sim_steps, "c");
-	add_node d = add_node(basis_poly.set_size, tot_sim_steps, "d");
-	add_node y = add_node(basis_poly.set_size, tot_sim_steps, "y");
-	delay_node y_d = delay_node(basis_poly.set_size, tot_sim_steps, "y_d");
-	mult_node y_d_c = mult_node(basis_poly, tot_sim_steps, "y_d_c");
-	mult_node e = mult_node(basis_poly, tot_sim_steps, "e");
+	mult_node a = mult_node(&basis_poly, "a");
+	delay_node b = delay_node("b");
+	mult_node c = mult_node(&basis_poly, "c");
+	add_node d = add_node("d");
+	add_node y = add_node("y");
+	delay_node y_d = delay_node("y_d");
+	mult_node y_d_c = mult_node(&basis_poly, "y_d_c");
+	mult_node e = mult_node(&basis_poly, "e");
 
 	// Connect/Init Netlist
-	u.init(PCE);
-	for(int i = 0; i < u.pce_coeffs.size(); i++){
-		u.pce_coeffs[i][0] = 0.01;
-		u.pce_coeffs[i][1] = 0.02;
-		u.pce_coeffs[i][2] = 0.01;
-		u.pce_coeffs[i][3] = 0.01;
-		u.pce_coeffs[i][4] = 0.005;
-	}
+	c1.init(0.05);
+	c2.init(0.25);
+	c3.init(0.6);
 
-	a.init(&u, &c1, PCE);
-	b.init(&u, PCE);
-	c.init(&b, &c2, PCE);
-	d.init(&c, &e, PCE);
-	y.init(&d, &y_d_c, PCE);
-	y_d.init(&y, PCE);
-	y_d_c.init(&y_d, &c3, PCE);
-	e.init(&a, &y_d, PCE);
+	a.init(&u, &c1);
+	b.init(&u);
+	c.init(&b, &c2);
+	d.init(&c, &e);
+	y.init(&d, &y_d_c);
+	y_d.init(&y);
+	y_d_c.init(&y_d, &c3);
+	e.init(&a, &y_d);
+
+	// a.set_bitwidth(8);
+	// c.set_bitwidth(8);
+	// y_d_c.set_bitwidth(8);
+	// e.set_bitwidth(8);
+
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(4);
+
+	// Set up Simulator
+	Simulator sim = Simulator(16);
+	sim.add_basis_poly_set(basis_poly);
+
+	sim.add_node(u);
+	sim.add_node(c1);
+	sim.add_node(c2);
+	sim.add_node(c3);
+	sim.add_node(a);
+	sim.add_node(b);
+	sim.add_node(c);
+	sim.add_node(d);
+	sim.add_node(y);
+	sim.add_node(y_d);
+	sim.add_node(y_d_c);
+	sim.add_node(e);
 
 	// Run Sim
-	process_node(&u, tot_sim_steps);
+	int tot_sim_steps = 10;
+	sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
+	sim.run_sim(&u);
 
-	//// PRINTING ////
-	y.print(basis_poly);
-	std::cout << "------------" << std::endl;
-	y.print_pwr(basis_poly);
-	// std::cout << std::endl;
+	sim.set_sim_params(PCE, tot_sim_steps);
+	sim.run_sim(&u);
+
+	sim.add_plot_node(y);
+	sim.plot();
+
 	return 0;
 }

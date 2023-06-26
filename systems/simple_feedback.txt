@@ -1,30 +1,45 @@
 int main(){
-	int num_vars = 1;
 	int tot_sim_steps = 30;
 	
-	BasisPolySet basis_poly = BasisPolySet(num_vars, 4);
+	// Define Netlist
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 
-	const_node c1 = const_node(basis_poly.set_size, tot_sim_steps, "c1");
+	const_node c1 = const_node("c1");
 	
-	input_node b = input_node(basis_poly, tot_sim_steps, 1, "x");
-	delay_node out_d = delay_node(basis_poly.set_size, tot_sim_steps, "y_d");
-	mult_node out_dc = mult_node(basis_poly, tot_sim_steps, "y_dc");
-	add_node out = add_node(basis_poly.set_size, tot_sim_steps, "out");
+	input_node b = input_node(basis_poly, 1, "x");
+	delay_node out_d = delay_node("y_d");
+	mult_node out_dc = mult_node(basis_poly, "y_dc");
+	add_node out = add_node("out");
 
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(2);
+
+	// Connect/Init Netlist
 	c1.init(0.5);
 
 	out_d.init(&out);
 	out_dc.init(&c1, &out_d);
 	out.init(&out_dc, &b);
 
+	// Set up Simulator
 	Simulator sim = Simulator();
+	sim.add_basis_poly_set(basis_poly);
+
+	sim.add_node(b);
+	sim.add_node(c1);
+	sim.add_node(out_d);
+	sim.add_node(out_dc);
+	sim.add_node(out);
+
+	// Run Sim
 	sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
 	sim.run_sim(&b);
-	out.print_stats();
 
 	sim.set_sim_params(PCE, tot_sim_steps);
 	sim.run_sim(&b);
-	out.print_pwr(basis_poly);
-
+	
+	sim.add_plot_node(out);
+	sim.plot();
+	
 	return 0;
 }

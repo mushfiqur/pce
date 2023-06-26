@@ -10,9 +10,17 @@
 #include "../include/dfg_node.h"
 #include "../include/BasisPolys.h"
 
+struct bitwidth_config{
+	dfg_node* n;
+	int bitwidth;
+};
+
 class Simulator{
 	public:
-	Simulator();
+	std::vector<bitwidth_config> curr_config;
+
+	public:
+	Simulator(int initial_bitwidth);
 	void add_basis_poly_set(BasisPolySet& bp_set);
 	void add_node(dfg_node& n);
 	void set_sim_params(SimType sim_t, int tot_sim_steps, int mc_samples=100000);
@@ -23,6 +31,7 @@ class Simulator{
 	private:
 	int tot_sim_steps;
 	int mc_samples;
+	int initial_bitwidth;
 	SimType sim_t;
 	std::vector<dfg_node*> nodes_arr;
 	std::vector<dfg_node*> nodes_to_plot;
@@ -32,6 +41,8 @@ class Simulator{
 	bool pce_sim_done;
 
 	void set_node_sim_params();
+	void set_input_bitwidths();
+	void calc_bitwidths();
 };
 
 #endif

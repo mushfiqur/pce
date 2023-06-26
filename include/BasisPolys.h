@@ -30,12 +30,15 @@ class BasisPolySet {
 	void generate_polys(int order);
 	
 	int get_var_idx(int id);
+	int get_new_var_id();
 	
 	void print();
 	void print_polys();
 	void print_exp_table();
 
 	private:
+	int max_var_idx;
+
 	void gen_exp_table();
 	void gen_poly_expt_sqr_table();
 	void gen_poly_expt_table();
