@@ -1,0 +1,116 @@
+int main(){
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
+	
+	// Define Netlist
+	input_node pll_in(&basis_poly, 1, "pll_in");
+	const_node kp("kp");
+	const_node ki("ki");
+	const_node k0("ki");
+	const_node trig_step("trig_step");
+
+	//// Phase Detector
+	mult_node e_d(&basis_poly, "e_d");
+	
+	//// PI Filter
+	mult_node kp_ed(&basis_poly, "kp_ed");
+	mult_node ki_ed(&basis_poly, "ki_ed");
+	add_node accum("accum");
+	delay_node accum_delay("accum_delay");
+	add_node e_f("e_f");
+
+	//// NCO Phase Estimate
+	mult_node k0_ef(&basis_poly, "k0_ef");
+	add_node phase_est("phase_est");
+	delay_node phase_est_delay("phase_est_delay");
+	add_node trig_arg("trig_arg");
+
+	//// NCO Sine
+	const_node c1("c1");
+	const_node invert("invert");
+	mult_node x_2(&basis_poly, "x_2");
+	mult_node x_3(&basis_poly, "x_3");
+	mult_node x_frac(&basis_poly, "x_frac");
+	sub_node sin_x("sin_x");
+	mult_node sin_x_invert(&basis_poly, "sine_x_invert");
+	delay_node nco_out("nco_{out}");
+
+	// Connect/Init Netlist
+	kp.init(0.2667);
+	ki.init(0.0178);
+	k0.init(1.0);
+	c1.init(1.0/6.0);
+	invert.init(-1.0);
+	trig_step.init(2.0*M_PI*(1.0/15.0));
+
+	e_d.init(&pll_in, &nco_out)	;
+	kp_ed.init(&e_d, &kp);
+	ki_ed.init(&e_d, &ki);
+	accum.init(&ki_ed, &accum_delay);
+	accum_delay.init(&accum);
+	e_f.init(&kp_ed, &accum);
+
+	k0_ef.init(&e_f, &k0);
+	phase_est.init(&k0_ef, &phase_est_delay);
+	phase_est_delay.init(&phase_est);
+	trig_arg.init(&phase_est, &trig_step);
+
+	x_2.init(&trig_arg, &trig_arg);
+	x_3.init(&x_2, &trig_arg);
+	x_frac.init(&x_3, &c1);
+	sin_x.init(&trig_arg, &x_frac);
+	sin_x_invert.init(&sin_x, &invert);
+	nco_out.init(&sin_x_invert);
+
+	// Set bitwidths
+	pll_in.set_bitwidth(32);
+	e_d.set_bitwidth(3);
+
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(3);
+
+	//// Set up Simulator
+	Simulator sim = Simulator(16);
+	sim.add_basis_poly_set(basis_poly);
+
+	// Add nodes to simulator
+	sim.add_node(pll_in);
+	sim.add_node(kp);
+	sim.add_node(ki);
+	sim.add_node(k0);
+	sim.add_node(trig_step);
+	sim.add_node(e_d);
+	sim.add_node(kp_ed);
+	sim.add_node(ki_ed);
+	sim.add_node(accum);
+	sim.add_node(accum_delay);
+	sim.add_node(e_f);
+	sim.add_node(k0_ef);
+	sim.add_node(phase_est);
+	sim.add_node(phase_est_delay);
+	sim.add_node(trig_arg);
+	sim.add_node(c1);
+	sim.add_node(invert);
+	sim.add_node(x_2);
+	sim.add_node(x_3);
+	sim.add_node(x_frac);
+	sim.add_node(sin_x);
+	sim.add_node(sin_x_invert);
+	sim.add_node(nco_out);
+	
+	// Run Sim
+	int tot_sim_steps = 40;
+	// sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
+	// sim.run_sim(&pll_in);
+
+	sim.set_sim_params(PCE, tot_sim_steps);
+	sim.run_sim(&pll_in);
+
+	// e_d.tail->print(basis_poly);
+	pll_in.print(basis_poly);
+
+	// sim.add_plot_node(pll_in);
+	// sim.plot();
+
+
+	return 0;
+}

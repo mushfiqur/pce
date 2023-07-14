@@ -24,9 +24,55 @@ polynomial::~polynomial(){
 void polynomial::print(){
 	this->m->print();
 	if(this->next != nullptr){
-		std::cout << " + ";
+		std::clog << " + ";
 		this->next->print();
 	}
+}
+
+polynomial* polynomial::copy(){
+	polynomial* ret_poly = new polynomial();
+	polynomial* p_itr = this;
+	polynomial* r_itr = ret_poly;
+
+	while(p_itr != nullptr){
+		r_itr->m->coeff = p_itr->m->coeff;
+		for(int i = 0; i < p_itr->m->arr.size(); i++){
+			r_itr->m->arr.push_back(new term{ .v = p_itr->m->arr[i]->v, .exp = p_itr->m->arr[i]->exp});
+		}
+
+		if(p_itr->next != nullptr){
+			r_itr->next = new polynomial();
+			r_itr->next->prev = r_itr;
+			r_itr = r_itr->next;
+		}
+
+		p_itr = p_itr->next;
+	}
+
+	return ret_poly;
+}
+
+bool polynomial::equals(polynomial* p){
+	polynomial* curr_poly = this;
+	polynomial* comp_poly = p;
+
+	while(curr_poly != nullptr){
+		if(comp_poly == nullptr || curr_poly->m->arr.size() != comp_poly->m->arr.size() || curr_poly->m->coeff != comp_poly->m->coeff){
+			return false;
+		}
+
+
+		for(int i = 0; i < curr_poly->m->arr.size(); i++){
+			if(curr_poly->m->arr[i]->v != comp_poly->m->arr[i]->v || curr_poly->m->arr[i]->exp != comp_poly->m->arr[i]->exp){
+				return false;
+			}
+		}
+
+		curr_poly = curr_poly->next;
+		comp_poly = comp_poly->next;
+	}
+
+	return true;
 }
 
 monomial::monomial(){
@@ -40,10 +86,10 @@ monomial::~monomial(){
 }
 
 void monomial::print(){
-	std::cout << this->coeff;
+	std::clog << this->coeff;
 
 	for(int i = 0; i < this->arr.size(); i++){
-		std::cout << "(x" << this->arr[i]->v->id << ")^(" << this->arr[i]->exp << ")";
+		std::clog << "(x" << this->arr[i]->v->id << ")^(" << this->arr[i]->exp << ")";
 	}
 }
 

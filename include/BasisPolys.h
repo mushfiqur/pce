@@ -28,6 +28,7 @@ class BasisPolySet {
 
 	void add_variable(var* v);
 	void generate_polys(int order);
+	void regenerate_polys(int order);
 	
 	int get_var_idx(int id);
 	int get_new_var_id();

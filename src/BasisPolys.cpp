@@ -70,7 +70,7 @@ void BasisPolySet::generate_polys(int order){
 			p->max_exp = 2;
 			
 			univariate_polys[i].push_back(p);
-// /*
+/*
 			p = new polynomial();
 			p->m->coeff = 1.0;
 			p->m->arr.push_back(new term{.v = this->var_arr[i], .exp = 3});
@@ -95,7 +95,7 @@ void BasisPolySet::generate_polys(int order){
 			p->max_exp = 2;
 			
 			univariate_polys[i].push_back(p);
-// */
+*/
 		}
 
 		if(this->dist_t == UNIFORM){
@@ -163,6 +163,14 @@ void BasisPolySet::generate_polys(int order){
 	gen_poly_expt_table();
 	gen_poly_expt_sqr_table();
 
+}
+
+void BasisPolySet::regenerate_polys(int order){
+	for(int i = 0; i < this->basis_polys.size(); i++){
+		delete this->basis_polys[i];
+	}
+	this->basis_polys.clear();
+	this->generate_polys(order);
 }
 
 void BasisPolySet::gen_exp_table(){

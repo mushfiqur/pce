@@ -44,6 +44,8 @@ class polynomial{
 	int max_exp;
 
 	void print();
+	polynomial* copy();
+	bool equals(polynomial* p);
 	~polynomial();
 };
 

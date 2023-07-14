@@ -21,6 +21,11 @@ typedef enum
 	CONST
 } NodeType;
 
+struct signal_polys {
+	double coeff;
+	polynomial* poly;
+};
+
 class dfg_node{
 	public:
 	NodeType t;
@@ -32,23 +37,30 @@ class dfg_node{
 
 	int bitwidth;
 
-	// std::vector<double> pce_coeffs;
 	std::vector<std::vector<double>> mc_samples;
 	std::vector<std::vector<double>> pce_coeffs;
+	std::vector<std::vector<double>> signal_coeffs;
+	std::vector<std::vector<signal_polys>> signal;
+
 	std::vector<double> pwr_arr;
 
 	std::vector<dfg_node*> next_nodes;
 	std::vector<dfg_node*> prev_nodes;
 
-	dfg_node(NodeType t, std::string label, int node_id=-1);
-	
+	dfg_node(NodeType t, BasisPolySet* bp_set, std::string label, int node_id=-1);
+	~dfg_node();
+
 	void add_next_node(dfg_node* n);
 	void print(BasisPolySet& bp_set);
+	void print_signal_coeffs();
+	void remove_signal_component();
 	bool node_args_ready(int curr_timestamp);
 	void print_pwr(BasisPolySet& bp_set);
 	void get_mc_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr);
 	void get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr, BasisPolySet& bp_set);
-	
+	void save_signal_polys();
+	void reorder_signal_polys();
+
 	virtual void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type);
 	
 	virtual void process(int curr_timestamp);
@@ -62,7 +74,8 @@ class dfg_node{
 	dfg_node* head;
 	dfg_node* tail;
 
-	private:
+	protected:
+	BasisPolySet* bp_set_ptr;
 	int basis_set_size;
 };
 
@@ -72,7 +85,7 @@ class add_node : public dfg_node{
 	void process_mc_sim(int curr_timestamp);
 
 	public:
-	add_node(std::string label) : dfg_node(ADD, label){};
+	add_node(BasisPolySet* bp_set, std::string label) : dfg_node(ADD, bp_set, label){};
 	void init(dfg_node* lhs, dfg_node* rhs);
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
@@ -84,7 +97,7 @@ class sub_node : public dfg_node{
 	void process_mc_sim(int curr_timestamp);
 
 	public:
-	sub_node(std::string label) : dfg_node(SUB, label){};
+	sub_node(BasisPolySet* bp_set, std::string label) : dfg_node(SUB, bp_set, label){};
 	void init(dfg_node* lhs, dfg_node* rhs);
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
@@ -92,7 +105,6 @@ class sub_node : public dfg_node{
 
 class mult_node : public dfg_node{
 	private:
-	BasisPolySet* bp_set_ptr;
 	// std::vector<std::vector<std::vector<double>>>* ref_exp_table;
 	// std::vector<double>*  ref_exp_sqr_table;
 	
@@ -102,7 +114,7 @@ class mult_node : public dfg_node{
 	
 	public:
 	mult_node(BasisPolySet* bp_set, std::string label);
-	~mult_node();
+	// ~mult_node();
 	void init(dfg_node* lhs, dfg_node* rhs);
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
@@ -112,7 +124,7 @@ class mult_node : public dfg_node{
 
 class divide_node : public dfg_node{
 	public:
-	divide_node(std::string label) : dfg_node(DIVIDE, label){};
+	divide_node(std::string label) : dfg_node(DIVIDE, nullptr, label){};
 	void init(dfg_node* lhs, dfg_node* rhs, SimType sim_type);
 	void process(int curr_timestamp);
 	void set_bitwidth(int width) override;
@@ -140,7 +152,7 @@ class delay_node : public dfg_node{
 	void process_mc_sim(int curr_timestamp);
 
 	public:
-	delay_node(std::string label) : dfg_node(DELAY, label){};
+	delay_node(BasisPolySet* bp_set, std::string label) : dfg_node(DELAY, bp_set, label){};
 	void init(dfg_node* prev_node);
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
@@ -149,7 +161,7 @@ class delay_node : public dfg_node{
 class const_node : public dfg_node{
 	public:
 	double val;
-	const_node(std::string label) : dfg_node(CONST, label){};
+	const_node(BasisPolySet* bp_set, std::string label) : dfg_node(CONST, bp_set, label){};
 	void process(int curr_timestamp) override;
 	void init(double val);
 	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;

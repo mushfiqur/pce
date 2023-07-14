@@ -1,18 +1,3 @@
-#include <iostream>
-#include <deque>
-#include <algorithm>
-#include <random>
-
-#include "../include/enums.h"
-#include "../include/simulation.h"
-#include "../include/utils.h"
-#include "../include/BasisPolys.h"
-#include "../include/dfg_node.h"
-
-// valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind_log ./main
-// valgrind -q --vgdb-error=0 --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main
-// valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main > log 2>&1
-
 int main(){
 	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 	
