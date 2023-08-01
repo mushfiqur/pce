@@ -30,6 +30,9 @@ int main(){
 	// Generate Basis Polynomials
 	basis_poly.generate_polys(3);
 
+	basis_poly.print();
+	return 0;
+
 	//// Set up Simulator
 	Simulator sim = Simulator();
 	sim.add_basis_poly_set(basis_poly);
@@ -46,22 +49,35 @@ int main(){
 	sim.add_node(f);
 	sim.add_node(g);
 
+//	why is it that with only three nodes, it will come up with shit like
+// (2.36175e-16) { 
+//         eps: 31, 
+//         e: 31, 
+//         f: 31
+// }
 	// Set bitwidths
-	sim.set_bitwidth(eps, 10);
-	sim.set_bitwidth(e, 10);
-	sim.set_bitwidth(f, 10);
-	sim.set_bitwidth(g, 10);
+	sim.set_bitwidth(eps, 32);
+	sim.set_bitwidth(e, 32);
+	sim.set_bitwidth(f, 32);
+	sim.set_bitwidth(g, 32);
+
+	sim.set_output_node(*g.tail);
 
 	// Run Sim
-	int tot_sim_steps = 10;
+	int tot_sim_steps = 1;
 	// sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
 	// sim.run_sim(&pll_in);
 
 	sim.set_sim_params(PCE, tot_sim_steps);
 	sim.run_sim(&eps);
 
-	sim.add_plot_node(*g.tail);
-	sim.plot();
+	std::cout << "\n(" << sim.curr_sol_noise_pwr << ") { \n";
+	for(int i = 0; i < sim.curr_solution.size() - 1; i++){
+		std::cout << "\t" << sim.curr_solution[i].n->label << ": " << sim.curr_solution[i].bitwidth << ", \n";
+	}
+	std::cout << "\t" << sim.curr_solution[sim.curr_solution.size() - 1].n->label << ": " << sim.curr_solution[sim.curr_solution.size() - 1].bitwidth << std::endl;
+	std::cout << "}\n";
+
 
 
 	return 0;

@@ -115,41 +115,47 @@ bool dfg_node::node_args_ready(int curr_timestamp){
 void dfg_node::set_bitwidth(int width){
 	// this->bitwidth = width;
 
-	if(this->tail == this){
-		int n_noise_id = this->bp_set_ptr->get_new_var_id();
-		std::string lbl = "n" + std::to_string(n_noise_id);
-		input_node* n_noise = new input_node(this->bp_set_ptr, n_noise_id, lbl);
-		n_noise->bitwidth = width;
-
-		this->tail = new add_node(this->bp_set_ptr, this->label + "_n");
-		this->tail->lhs = this;
-		this->tail->rhs = n_noise;
-
-		for(int i = 0; i < this->next_nodes.size(); i++){
-			this->tail->add_next_node(this->next_nodes[i]);
-
-			if(this->next_nodes[i]->lhs == this){
-				this->next_nodes[i]->lhs = this->tail;
-			}
-
-			if(this->next_nodes[i]->rhs == this){
-				this->next_nodes[i]->rhs = this->tail;
-			}
-			
-
-			for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
-				if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
-					this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
-				}
-			}
-		}
-		this->next_nodes.clear();
-
-		this->add_next_node(this->tail);
-		n_noise->add_next_node(this->tail);
+	if(this->t == INPUT_NOISE){
+		this->bitwidth = width;
 	}
 	else{
-		this->tail->rhs->set_bitwidth(width);	
+		if(this->tail == this){
+			int n_noise_id = this->bp_set_ptr->get_new_var_id();
+			std::string lbl = "n" + std::to_string(n_noise_id);
+			input_node* n_noise = new input_node(this->bp_set_ptr, n_noise_id, lbl);
+			n_noise->t = INPUT_NOISE;
+			n_noise->bitwidth = width;
+
+			this->tail = new add_node(this->bp_set_ptr, this->label + "_n");
+			this->tail->lhs = this;
+			this->tail->rhs = n_noise;
+
+			for(int i = 0; i < this->next_nodes.size(); i++){
+				this->tail->add_next_node(this->next_nodes[i]);
+
+				if(this->next_nodes[i]->lhs == this){
+					this->next_nodes[i]->lhs = this->tail;
+				}
+
+				if(this->next_nodes[i]->rhs == this){
+					this->next_nodes[i]->rhs = this->tail;
+				}
+				
+
+				for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
+					if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
+						this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
+					}
+				}
+			}
+			this->next_nodes.clear();
+
+			this->add_next_node(this->tail);
+			n_noise->add_next_node(this->tail);
+		}
+		else{
+			this->tail->rhs->set_bitwidth(width);	
+		}
 	}
 }
 
@@ -162,6 +168,17 @@ void dfg_node::remove_signal_component(){
 			}
 		}
 	}
+}
+
+double dfg_node::get_pwr(){
+	double pwr = 0.0;
+	int last_idx = this->pce_coeffs.size() - 1;
+
+	for(int i = 0; i < this->pce_coeffs[last_idx].size(); i++){
+		pwr += this->pce_coeffs[last_idx][i] * this->pce_coeffs[last_idx][i] * this->bp_set_ptr->poly_sqr_expt[i];
+	}
+
+	return pwr;
 }
 
 void dfg_node::print_pwr(BasisPolySet& bp_set){
@@ -270,7 +287,7 @@ dfg_node::~dfg_node(){
 
 ///////////////////////////////////////////////////
 
-input_node::input_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT, bp_set, label, node_id){
+input_node::input_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT_SIGNAL, bp_set, label, node_id){
 	this->bp_set_ptr = bp_set;
 	
 	bool var_exists = false;
@@ -315,7 +332,7 @@ void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 				// TODO: line below uncommented represents a truncation quantizer
 				//         commenting it out makes it a rounding quantizer
 				//        Implement enum to differentiate
-				this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+				// this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
 				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
 			}
 		}

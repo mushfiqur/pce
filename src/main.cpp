@@ -12,72 +12,61 @@
 // valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind_log ./main
 // valgrind -q --vgdb-error=0 --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main
 // valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main > log 2>&1
-
-int main(){
-	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
-	
+int main(){	
 	// Define Netlist
-	input_node eps(&basis_poly, 1, "eps");
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 
+	input_node x(&basis_poly, 1, "x");
+	mult_node x_c(&basis_poly, "x_c");
 	const_node c1(&basis_poly, "c1");
 	const_node c2(&basis_poly, "c2");
-
-	mult_node a(&basis_poly, "a");
-	mult_node b(&basis_poly, "b");
-	mult_node c(&basis_poly, "c");
-	mult_node d(&basis_poly, "d");
-
-	mult_node e(&basis_poly, "e");
-	mult_node f(&basis_poly, "f");
-	sub_node g(&basis_poly, "g");
+	
+	delay_node out_d(&basis_poly, "y_d");
+	mult_node out_dc(&basis_poly, "y_dc");
+	add_node out(&basis_poly, "out");
 
 	// Connect/Init Netlist
-	c1.init(10.0);
-	c2.init(1.0);
-	a.init(&eps, &c1);
-	b.init(&eps, &c1);
-	c.init(&eps, &c2);
-	d.init(&eps, &c2);
-	e.init(&a, &b);
-	f.init(&c, &d);
-	g.init(&e, &f);
+	c1.init(0.5);
+	c2.init(0.5);
+
+	x_c.init(&c2, &x);
+	out_d.init(&out);
+	out_dc.init(&c1, &out_d);
+	out.init(&out_dc, &x_c);
 
 	// Generate Basis Polynomials
 	basis_poly.generate_polys(3);
 
-	//// Set up Simulator
+	// Set up Simulator
 	Simulator sim = Simulator();
 	sim.add_basis_poly_set(basis_poly);
 
-	// Add nodes to simulator
-	sim.add_node(eps);
+	sim.add_node(x);
+	sim.add_node(x_c);
 	sim.add_node(c1);
 	sim.add_node(c2);
-	sim.add_node(a);
-	sim.add_node(b);
-	sim.add_node(c);
-	sim.add_node(d);
-	sim.add_node(e);
-	sim.add_node(f);
-	sim.add_node(g);
+	sim.add_node(out_d);
+	sim.add_node(out_dc);
+	sim.add_node(out);
 
 	// Set bitwidths
-	sim.set_bitwidth(eps, 10);
-	sim.set_bitwidth(e, 10);
-	sim.set_bitwidth(f, 10);
-	sim.set_bitwidth(g, 10);
+	sim.set_bitwidth(x, 32);
+	sim.set_bitwidth(x_c, 32);
+	sim.set_bitwidth(out_dc, 32);
+
+	sim.set_output_node(out);
 
 	// Run Sim
 	int tot_sim_steps = 10;
-	// sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
-	// sim.run_sim(&pll_in);
 
 	sim.set_sim_params(PCE, tot_sim_steps);
-	sim.run_sim(&eps);
+	// sim.run_sim(&b);
+	sim.run_sim_anneal(&x, 1.0/3.0, 20.0, 100000);
+	
+	sim.print();
 
-	sim.add_plot_node(*g.tail);
-	sim.plot();
-
+	// sim.add_plot_node(out);
+	// sim.plot();
 
 	return 0;
 }

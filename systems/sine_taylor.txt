@@ -34,21 +34,28 @@ int main(){
 	sim.add_node(sin_x);
 
 	// Set bitwidths
-	sim.set_bitwidth(x, 10);
-	sim.set_bitwidth(x_2, 10);
-	sim.set_bitwidth(x_3, 10);
-	sim.set_bitwidth(x_frac, 10);
+	sim.set_bitwidth(x, 32);
+	sim.set_bitwidth(x_2, 32);
+	sim.set_bitwidth(x_3, 32);
+	sim.set_bitwidth(x_frac, 32);
+
+	sim.set_output_node(sin_x);
 
 	// Run Sim
-	int tot_sim_steps = 10;
+	int tot_sim_steps = 1;
 	// sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
 	// sim.run_sim(&pll_in);
 
 	sim.set_sim_params(PCE, tot_sim_steps);
 	sim.run_sim(&x);
 
-	sim.add_plot_node(sin_x);
-	sim.plot();
+	std::cout << "\n(" << sim.curr_sol_noise_pwr << ") { \n";
+	for(int i = 0; i < sim.curr_solution.size() - 1; i++){
+		std::cout << "\t" << sim.curr_solution[i].n->label << ": " << sim.curr_solution[i].bitwidth << ", \n";
+	}
+	std::cout << "\t" << sim.curr_solution[sim.curr_solution.size() - 1].n->label << ": " << sim.curr_solution[sim.curr_solution.size() - 1].bitwidth << std::endl;
+	std::cout << "}\n";
+
 
 
 	return 0;

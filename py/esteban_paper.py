@@ -14,8 +14,8 @@ import time
 np.random.seed(int(time.time()))
 
 def quantize(f_val, bits):
-    # return ((f_val * np.power(2.0, bits))).round() / np.power(2.0, bits)
-    return (f_val * np.power(2.0, bits)).astype(int) / np.power(2.0, bits)
+    return ((f_val * np.power(2.0, bits))).round() / np.power(2.0, bits)
+    # return (f_val * np.power(2.0, bits)).astype(int) / np.power(2.0, bits)
 
 bitwidth = 10
 
@@ -35,15 +35,15 @@ flt_f = flt_c * flt_d
 flt_g = flt_e - flt_f
 
 #### FIXED POINT SIM
-fxp_a = 10.0*quantize(eps, bitwidth)
-fxp_b = 10.0*quantize(eps, bitwidth)
-fxp_c =  1.0*quantize(eps, bitwidth)
-fxp_d =  1.0*quantize(eps, bitwidth)
+fxp_a = 10.0*quantize(eps, 8)
+fxp_b = 10.0*quantize(eps, 8)
+fxp_c =  1.0*quantize(eps, 8)
+fxp_d =  1.0*quantize(eps, 8)
 
-fxp_e = quantize(fxp_a * fxp_b, bitwidth)
-fxp_f = quantize(fxp_c * fxp_d, bitwidth)
+fxp_e = quantize(fxp_a * fxp_b, 1)
+fxp_f = quantize(fxp_c * fxp_d, 1)
 
-fxp_g = quantize(fxp_e - fxp_f, bitwidth)
+fxp_g = quantize(fxp_e - fxp_f, 11)
 
 #### RESULTS
 

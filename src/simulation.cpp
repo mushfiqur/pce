@@ -3,6 +3,10 @@
 Simulator::Simulator(){
 	this->pce_sim_done = false;
 	this->mc_sim_done = false;
+
+	std::random_device rd;
+	this->mt = std::mt19937(rd());
+	this->real_dist = std::uniform_real_distribution<double>(0.0, 1.0);
 }
 
 void Simulator::set_sim_params(SimType sim_t, int tot_sim_steps, int mc_samples){
@@ -25,14 +29,18 @@ void Simulator::set_node_sim_params(){
 }
 
 void Simulator::set_bitwidth(dfg_node& n, int bitwidth){
-	for(int i = 0; i < this->curr_config.size(); i++){
-		if(this->curr_config[i].n == &n){
-			this->curr_config[i].bitwidth == bitwidth;
+	for(int i = 0; i < this->curr_solution.size(); i++){
+		if(this->curr_solution[i].n == &n){
+			this->curr_solution[i].bitwidth == bitwidth;
 			return;
 		}
 	}
-	this->curr_config.push_back({.n = &n, .bitwidth=bitwidth});
+	this->curr_solution.push_back({.n = &n, .bitwidth=bitwidth});
 	// std::clog << "ERROR: cannot set bitwidth for node " << n.label << std::endl;
+}
+
+void Simulator::set_output_node(dfg_node& n){
+	this->output_node = &n;
 }
 
 void Simulator::calc_bitwidths(){
@@ -40,7 +48,10 @@ void Simulator::calc_bitwidths(){
 	//        else, node bitwidth is function of lhs and rhs
 }
 
-void Simulator::run_sim(dfg_node* n){
+void Simulator::initialize(dfg_node* n){
+	this->head = n;
+	this->int_dist = std::uniform_int_distribution<int>(0, curr_solution.size() - 1);
+	
 	this->set_node_sim_params();
 
 	if(this->sim_t == MONTE_CARLO){
@@ -51,7 +62,7 @@ void Simulator::run_sim(dfg_node* n){
 	}
 
 	// Propagate signal
-	this->propagate_coeffs(n);
+	this->propagate_coeffs();
 
 	// Store signal coeffs
 	for(int i = 0; i < this->nodes_arr.size(); i++){
@@ -59,8 +70,8 @@ void Simulator::run_sim(dfg_node* n){
 	}
 
 	// Set bitwidths
-	for(int i = 0; i < this->curr_config.size(); i++){
-		this->curr_config[i].n->set_bitwidth(this->curr_config[i].bitwidth);
+	for(int i = 0; i < this->curr_solution.size(); i++){
+		this->curr_solution[i].n->set_bitwidth(this->curr_solution[i].bitwidth);
 	}
 
 	//// Regenerate basis_polys
@@ -73,25 +84,129 @@ void Simulator::run_sim(dfg_node* n){
 
 	// Propagate signal + noise
 	this->set_node_sim_params();
-	this->propagate_coeffs(n);
+	this->propagate_coeffs();
 
 	// Remove signal component
 	for(int n = 0; n < this->nodes_arr.size(); n++){
 		this->nodes_arr[n]->remove_signal_component();
 	}
+
+	// Save power
+	this->curr_sol_noise_pwr = this->output_node->get_pwr();
 }
 
-void Simulator::propagate_coeffs(dfg_node* n){
+double Simulator::try_solution(std::vector<bitwidth_config>& proposed_sol){
+	// Set bitwidths
+	for(int i = 0; i < proposed_sol.size(); i++){
+		proposed_sol[i].n->set_bitwidth(proposed_sol[i].bitwidth);
+	}
+
+	// Propagate signal + noise
+	this->set_node_sim_params();
+	this->propagate_coeffs();
+
+	// Remove signal component
+	for(int n = 0; n < this->nodes_arr.size(); n++){
+		this->nodes_arr[n]->remove_signal_component();
+	}
+
+	// Save noise power
+	return this->output_node->get_pwr();
+}
+
+void Simulator::print(){
+	std::cout << "\n(" << this->curr_sol_noise_pwr << ") { \n";
+	for(int i = 0; i < this->curr_solution.size() - 1; i++){
+		std::cout << "\t" << this->curr_solution[i].n->label << ": " << this->curr_solution[i].bitwidth << ", \n";
+	}
+	std::cout << "\t" << this->curr_solution[this->curr_solution.size() - 1].n->label << ": " << this->curr_solution[this->curr_solution.size() - 1].bitwidth << std::endl;
+	std::cout << "}\n";
+}
+
+void Simulator::run_sim_anneal(dfg_node* n, double sig_pwr, double tgt_snr, int tot_iters){
+		// Vars
+	std::vector<bitwidth_config> proposed_sol;
+	double prop_sol_noise_pwr;
+
+	double tgt_noise_pwr = sig_pwr / std::pow(10.0, tgt_snr / 10.0);
+	double temperature = 0.1;
+	
+	// Load initial solution
+	this->initialize(n);
+	
+	std::cout << "Tgt: " << tgt_noise_pwr << std::endl;
+	std::cout << this->curr_sol_noise_pwr << std::endl;
+
+	for(int iter = 0; iter < tot_iters; iter++){
+		// Get neighboring solution
+		proposed_sol = get_neighbour();
+
+		// Try solution
+		prop_sol_noise_pwr = try_solution(proposed_sol);
+
+		// Evaluate solution
+		if(prop_sol_noise_pwr <= tgt_noise_pwr){
+			if(prop_sol_noise_pwr > curr_sol_noise_pwr){
+				this->curr_solution = proposed_sol;
+				curr_sol_noise_pwr = prop_sol_noise_pwr;
+				// std::cout << "[" << iter << "] " << "{" << temperature << "} ";
+				// this->print();
+			}
+			else{
+				// std::cout << "Probability of accept: " << std::exp((prop_sol_noise_pwr - curr_sol_noise_pwr) / temperature) << std::endl;
+				if (std::exp((prop_sol_noise_pwr - curr_sol_noise_pwr) / temperature) >= this->real_dist(this->mt) ){
+					this->curr_solution = proposed_sol;
+					curr_sol_noise_pwr = prop_sol_noise_pwr;
+					// std::cout << "LUCKY ";
+					// std::cout << "[" << iter << "] " << "{" << temperature << "} ";
+					// this->print();
+				}
+			}
+		}
+
+		// Update temperature
+		// temperature = 1.0 / std::log10(2 + iter);
+		temperature = 0.01 * temperature;
+	}
+
+	// print();
+}
+
+void Simulator::run_sim(dfg_node* n){
+	// Load initial solution
+	this->initialize(n);
+}
+
+std::vector<bitwidth_config> Simulator::get_neighbour(){
+	std::vector<bitwidth_config> proposed_sol(this->curr_solution);
+	int rand_int = this->int_dist(this->mt);
+
+	
+	// while(proposed_sol[rand_int].bitwidth == 1){
+	// 	rand_int = this->int_dist(this->mt);
+	// }
+	// proposed_sol[rand_int].bitwidth -= 1;
+
+    std::srand((unsigned)time(0)); 
+	if(proposed_sol[rand_int].bitwidth > 1){
+		proposed_sol[rand_int].bitwidth -= 1;;
+	}
+	// proposed_sol[rand_int].bitwidth = (std::rand()%32)+1;;
+
+	return proposed_sol;
+}
+
+void Simulator::propagate_coeffs(){
 	std::deque<dfg_node*> q;
 
 	for(int curr_timestamp = 0; curr_timestamp < this->tot_sim_steps; curr_timestamp++){
-		q.push_back(n);
+		q.push_back(this->head);
 
 		dfg_node* curr_node;
 		while(q.size() != 0){
 			curr_node = q.front();
 
-			if(curr_node->t == CONST || curr_node->t == DELAY || curr_node->t == INPUT || curr_node->node_args_ready(curr_timestamp)){
+			if(curr_node->t == CONST || curr_node->t == DELAY || curr_node->t == INPUT_SIGNAL || curr_node->t == INPUT_NOISE || curr_node->node_args_ready(curr_timestamp)){
 				// std::cout << "[" << curr_timestamp << "] Processing " << curr_node->label << std::endl;
 				curr_node->process(curr_timestamp);
 				q.pop_front();

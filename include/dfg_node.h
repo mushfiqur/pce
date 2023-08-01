@@ -16,7 +16,8 @@ typedef enum
 	SUB,
 	MULT,
 	DIVIDE,
-	INPUT,
+	INPUT_SIGNAL,
+	INPUT_NOISE,
 	DELAY,
 	CONST
 } NodeType;
@@ -56,6 +57,7 @@ class dfg_node{
 	void remove_signal_component();
 	bool node_args_ready(int curr_timestamp);
 	void print_pwr(BasisPolySet& bp_set);
+	double get_pwr();
 	void get_mc_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr);
 	void get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr, BasisPolySet& bp_set);
 	void save_signal_polys();

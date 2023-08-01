@@ -1,18 +1,13 @@
-int main(){
-	int tot_sim_steps = 30;
-	
+int main(){	
 	// Define Netlist
 	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 
-	const_node c1 = const_node("c1");
+	input_node b(&basis_poly, 1, "x");
+	const_node c1(&basis_poly, "c1");
 	
-	input_node b = input_node(basis_poly, 1, "x");
-	delay_node out_d = delay_node("y_d");
-	mult_node out_dc = mult_node(basis_poly, "y_dc");
-	add_node out = add_node("out");
-
-	// Generate Basis Polynomials
-	basis_poly.generate_polys(2);
+	delay_node out_d(&basis_poly, "y_d");
+	mult_node out_dc(&basis_poly, "y_dc");
+	add_node out(&basis_poly, "out");
 
 	// Connect/Init Netlist
 	c1.init(0.5);
@@ -20,6 +15,9 @@ int main(){
 	out_d.init(&out);
 	out_dc.init(&c1, &out_d);
 	out.init(&out_dc, &b);
+
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(3);
 
 	// Set up Simulator
 	Simulator sim = Simulator();
@@ -31,15 +29,26 @@ int main(){
 	sim.add_node(out_dc);
 	sim.add_node(out);
 
+	// Set bitwidths
+	sim.set_bitwidth(b, 32);
+	sim.set_bitwidth(out_dc, 32);
+
+	sim.set_output_node(out);
+
 	// Run Sim
-	sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
-	sim.run_sim(&b);
+	int tot_sim_steps = 10;
 
 	sim.set_sim_params(PCE, tot_sim_steps);
 	sim.run_sim(&b);
 	
-	sim.add_plot_node(out);
-	sim.plot();
 	
+	std::cout << "\n(" << sim.curr_sol_noise_pwr << ") { \n";
+	for(int i = 0; i < sim.curr_solution.size() - 1; i++){
+		std::cout << "\t" << sim.curr_solution[i].n->label << ": " << sim.curr_solution[i].bitwidth << ", \n";
+	}
+	std::cout << "\t" << sim.curr_solution[sim.curr_solution.size() - 1].n->label << ": " << sim.curr_solution[sim.curr_solution.size() - 1].bitwidth << std::endl;
+	std::cout << "}\n";
+
+
 	return 0;
 }
