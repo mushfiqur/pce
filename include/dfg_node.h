@@ -135,6 +135,8 @@ class divide_node : public dfg_node{
 class input_node : public dfg_node{
 	private:
 	var* v;
+	double unfm_dist_param_a;
+	double unfm_dist_param_b;
 	BasisPolySet* bp_set_ptr;
 
 	std::mt19937 mt;
@@ -142,6 +144,23 @@ class input_node : public dfg_node{
 
 	public:
 	input_node(BasisPolySet* bp_set, int node_id, std::string label);
+	void set_range(double a, double b);
+	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
+	void process(int curr_timestamp) override;
+	void init();
+	void set_bitwidth(int width) override;
+};
+
+class noise_node : public dfg_node{
+	private:
+	var* v;
+	BasisPolySet* bp_set_ptr;
+
+	std::mt19937 mt;
+	std::uniform_real_distribution<double> dist;
+
+	public:
+	noise_node(BasisPolySet* bp_set, int node_id, std::string label);
 	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
 	void process(int curr_timestamp) override;
 	void init();

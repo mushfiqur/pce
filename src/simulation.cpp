@@ -182,15 +182,15 @@ std::vector<bitwidth_config> Simulator::get_neighbour(){
 	int rand_int = this->int_dist(this->mt);
 
 	
-	// while(proposed_sol[rand_int].bitwidth == 1){
-	// 	rand_int = this->int_dist(this->mt);
-	// }
-	// proposed_sol[rand_int].bitwidth -= 1;
-
-    std::srand((unsigned)time(0)); 
-	if(proposed_sol[rand_int].bitwidth > 1){
-		proposed_sol[rand_int].bitwidth -= 1;;
+	while(proposed_sol[rand_int].bitwidth == 1){
+		rand_int = this->int_dist(this->mt);
 	}
+	proposed_sol[rand_int].bitwidth -= 1;
+
+    // std::srand((unsigned)time(0)); 
+	// if(proposed_sol[rand_int].bitwidth > 1){
+	// 	proposed_sol[rand_int].bitwidth -= 1;;
+	// }
 	// proposed_sol[rand_int].bitwidth = (std::rand()%32)+1;;
 
 	return proposed_sol;

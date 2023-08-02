@@ -115,47 +115,40 @@ bool dfg_node::node_args_ready(int curr_timestamp){
 void dfg_node::set_bitwidth(int width){
 	// this->bitwidth = width;
 
-	if(this->t == INPUT_NOISE){
-		this->bitwidth = width;
-	}
-	else{
-		if(this->tail == this){
-			int n_noise_id = this->bp_set_ptr->get_new_var_id();
-			std::string lbl = "n" + std::to_string(n_noise_id);
-			input_node* n_noise = new input_node(this->bp_set_ptr, n_noise_id, lbl);
-			n_noise->t = INPUT_NOISE;
-			n_noise->bitwidth = width;
+	if(this->tail == this){
+		int n_noise_id = this->bp_set_ptr->get_new_var_id();
+		std::string lbl = "n" + std::to_string(n_noise_id);
+		noise_node* n_noise = new noise_node(this->bp_set_ptr, n_noise_id, lbl);
+		n_noise->bitwidth = width;
 
-			this->tail = new add_node(this->bp_set_ptr, this->label + "_n");
-			this->tail->lhs = this;
-			this->tail->rhs = n_noise;
+		this->tail = new add_node(this->bp_set_ptr, this->label + "_n");
+		this->tail->lhs = this;
+		this->tail->rhs = n_noise;
 
-			for(int i = 0; i < this->next_nodes.size(); i++){
-				this->tail->add_next_node(this->next_nodes[i]);
+		for(int i = 0; i < this->next_nodes.size(); i++){
+			this->tail->add_next_node(this->next_nodes[i]);
 
-				if(this->next_nodes[i]->lhs == this){
-					this->next_nodes[i]->lhs = this->tail;
-				}
+			if(this->next_nodes[i]->lhs == this){
+				this->next_nodes[i]->lhs = this->tail;
+			}
 
-				if(this->next_nodes[i]->rhs == this){
-					this->next_nodes[i]->rhs = this->tail;
-				}
-				
+			if(this->next_nodes[i]->rhs == this){
+				this->next_nodes[i]->rhs = this->tail;
+			}
 
-				for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
-					if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
-						this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
-					}
+			for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
+				if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
+					this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
 				}
 			}
-			this->next_nodes.clear();
+		}
+		this->next_nodes.clear();
 
-			this->add_next_node(this->tail);
-			n_noise->add_next_node(this->tail);
-		}
-		else{
-			this->tail->rhs->set_bitwidth(width);	
-		}
+		this->add_next_node(this->tail);
+		n_noise->add_next_node(this->tail);
+	}
+	else{
+		this->tail->rhs->set_bitwidth(width);	
 	}
 }
 
@@ -257,6 +250,7 @@ void dfg_node::save_signal_polys(){
 void dfg_node::reorder_signal_polys(){
 	this->signal_coeffs = std::vector<std::vector<double>>(this->pce_coeffs.size(), std::vector<double>(this->bp_set_ptr->basis_polys.size(), 0.0));
 	
+	// Time is but a number
 	for(int t = 0; t < this->signal.size(); t++){
 		for(int i = 0; i < this->signal[t].size(); i++){
 			for(int j = 0; j < this->bp_set_ptr->basis_polys.size(); j++){
@@ -289,7 +283,8 @@ dfg_node::~dfg_node(){
 
 input_node::input_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT_SIGNAL, bp_set, label, node_id){
 	this->bp_set_ptr = bp_set;
-	
+	this->set_range(-1.0, 1.0);
+
 	bool var_exists = false;
 	for(int i = 0; i < bp_set->var_arr.size(); i++){
 		if(bp_set->var_arr[i]->id == node_id){
@@ -315,26 +310,19 @@ void input_node::init(){
 
 }
 
+void input_node::set_range(double a, double b){
+	this->unfm_dist_param_a = a;
+	this->unfm_dist_param_b = b;
+}
+
 void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
 	this->sim_type = sim_type;
 	this->last_exec_time = -1;
 
 	if(sim_type == PCE){
 		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
-		
-		if(this->bitwidth == -1){
-			for(int t = 0; t < this->pce_coeffs.size(); t++){
-				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = 1.0;
-			}
-		}
-		else{
-			for(int t = 0; t < this->pce_coeffs.size(); t++){
-				// TODO: line below uncommented represents a truncation quantizer
-				//         commenting it out makes it a rounding quantizer
-				//        Implement enum to differentiate
-				// this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
-				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
-			}
+		for(int t = 0; t < this->pce_coeffs.size(); t++){
+			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = (unfm_dist_param_b - unfm_dist_param_b) / 2.0;
 		}
 	}
 	else{
@@ -365,9 +353,80 @@ void input_node::set_bitwidth(int width){
 	// this->bitwidth = width;
 	dfg_node::set_bitwidth(width);
 	this->dist = std::uniform_real_distribution<double>(0.0, std::pow(2.0, -1.0*width));
+}
 
+///////////////////////////////////////////////////
+
+noise_node::noise_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT_NOISE, bp_set, label, node_id){
+	this->bp_set_ptr = bp_set;
 	
+	bool var_exists = false;
+	for(int i = 0; i < bp_set->var_arr.size(); i++){
+		if(bp_set->var_arr[i]->id == node_id){
+			var_exists = true;
+			this->v = bp_set->var_arr[i];
+			break;
+		}
+	}
 
+	if(!var_exists){
+		var* v = new var(1, -1, node_id);
+		bp_set->add_variable(v);
+		this->v = v;
+	}
+	
+	std::random_device rd;
+	this->mt = std::mt19937(rd());
+	this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
+};
+
+
+void noise_node::init(){
+
+}
+
+void noise_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+
+	if(sim_type == PCE){
+		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+		
+		for(int t = 0; t < this->pce_coeffs.size(); t++){
+			// TODO: line below uncommented represents a truncation quantizer
+			//         commenting it out makes it a rounding quantizer
+			//        Implement enum to differentiate
+			// this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+		}
+	}
+	else{
+		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
+		std::vector<double> samples(this->mc_samples[0].size(), 0.0);
+
+		for(int i = 0; i < samples.size(); i++){
+			samples[i] = this->dist(this->mt);
+		}
+
+		for(int i = 0; i < this->mc_samples.size(); i++){
+			this->mc_samples[i] = samples;
+		}
+	}
+
+	// TODO: Verify this hack
+	if(this->tail != this){
+		this->tail->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
+		this->tail->rhs->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
+	}
+}
+
+void noise_node::process(int curr_timestamp){
+	this->last_exec_time = curr_timestamp;
+}
+
+void noise_node::set_bitwidth(int width){
+	this->bitwidth = width;
+	this->dist = std::uniform_real_distribution<double>(0.0, std::pow(2.0, -1.0*width));
 }
 
 ///////////////////////////////////////////////////

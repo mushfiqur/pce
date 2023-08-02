@@ -22,11 +22,11 @@ flt_x_frac = flt_x_3 * c1
 flt_sin_x = flt_x - flt_x_frac
 
 #### FIXED POINT SIM
-fxp_x = quantize(x, 2)
-fxp_x_2 = quantize(fxp_x * fxp_x, 1)
-fxp_x_3 = quantize(fxp_x_2 * fxp_x, 1)
-fxp_x_frac = quantize(fxp_x_3 * c1, 2)
-# fxp_sin_x = quantize( fxp_x - fxp_x_frac, 9)
+fxp_x = quantize(x, 15)                             ## matlab suggested: 15 (14) vs. my suggestion: 16 (15)
+fxp_x_2 = quantize(fxp_x * fxp_x, 12)               ## matlab suggested: 16 (15) vs. my suggestion: 13 (12)
+fxp_x_3 = quantize(fxp_x_2 * fxp_x, 14)             ## matlab suggested: 15 (14) vs. my suggestion: 15 (14)
+fxp_x_frac = quantize(fxp_x_3 * c1, 15)             ## matlab suggested: 17 (17) vs. my suggestion: 17 (15)
+# fxp_sin_x = quantize( fxp_x - fxp_x_frac, 9)      ## tot:              63 (60)                    61 (56)
 fxp_sin_x = fxp_x - fxp_x_frac
 
 '''
@@ -44,3 +44,23 @@ noise_pwr = np.mean(np.square(flt_sin_x - fxp_sin_x))
 
 print("flt_sin_x - fxp_sin_x: {0}".format(noise_pwr))
 print("SNR (dB): {0}".format(10.0 * np.log10(sig_pwr / noise_pwr)))
+
+'''
+With 1000000 samples, Matlab suggested this config:
+{
+    x: 14
+    x_2: 15
+    x_3: 14
+    x_frac: 17 
+} (tot: 60 bits)
+For a SNR of 91.5 dB
+
+With a target of 92 dB, I suggest:
+{ 
+    x: 15, 
+    x_2: 12, 
+    x_3: 14, 
+    x_frac: 15
+} (tot: 56 bits)
+which hits 92.7 dB.
+'''
