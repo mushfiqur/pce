@@ -322,10 +322,7 @@ void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 	if(sim_type == PCE){
 		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 		for(int t = 0; t < this->pce_coeffs.size(); t++){
-			// BIG TODO: this only works for symmetric uniform vars because 
-			//            only P2 is updated, not the DC P1 term.
-			//			 This means thesis should also be updated and the solution
-			//            presented there is incorrect (equation 2.33 on page 24)
+			this->pce_coeffs[t][0] = (unfm_dist_param_a + unfm_dist_param_b) / 2.0;
 			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
 		}
 	}
