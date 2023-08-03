@@ -46,13 +46,13 @@ void dfg_node::add_next_node(dfg_node * n){
 	}
 }
 
-void dfg_node::print(BasisPolySet& bp_set){
+void dfg_node::print(){
 	for(int t = 0; t < this->pce_coeffs.size(); t++){
 		std::cerr << "[" << this->label.c_str() << " @ " << t << "] " << std::endl;
 		for(int i = 0; i < this->pce_coeffs[t].size(); i++){
 			if(this->pce_coeffs[t][i] != 0){
 				std::cerr << this->pce_coeffs[t][i] << ": ";
-				bp_set.basis_polys[i]->print();
+				this->bp_set_ptr->basis_polys[i]->print();
 				std::cerr << std::endl;
 			}
 			else{
@@ -322,7 +322,11 @@ void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 	if(sim_type == PCE){
 		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 		for(int t = 0; t < this->pce_coeffs.size(); t++){
-			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = (unfm_dist_param_b - unfm_dist_param_b) / 2.0;
+			// BIG TODO: this only works for symmetric uniform vars because 
+			//            only P2 is updated, not the DC P1 term.
+			//			 This means thesis should also be updated and the solution
+			//            presented there is incorrect (equation 2.33 on page 24)
+			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
 		}
 	}
 	else{

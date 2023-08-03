@@ -52,7 +52,7 @@ class dfg_node{
 	~dfg_node();
 
 	void add_next_node(dfg_node* n);
-	void print(BasisPolySet& bp_set);
+	void print();
 	void print_signal_coeffs();
 	void remove_signal_component();
 	bool node_args_ready(int curr_timestamp);

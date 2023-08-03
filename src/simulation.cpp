@@ -173,8 +173,21 @@ void Simulator::run_sim_anneal(dfg_node* n, double sig_pwr, double tgt_snr, int 
 }
 
 void Simulator::run_sim(dfg_node* n){
-	// Load initial solution
-	this->initialize(n);
+	this->head = n;
+	this->int_dist = std::uniform_int_distribution<int>(0, curr_solution.size() - 1);
+	
+	this->set_node_sim_params();
+
+	if(this->sim_t == MONTE_CARLO){
+		this->mc_sim_done = true;
+	}
+	else{
+		this->pce_sim_done = true;
+	}
+
+	// Propagate signal
+	this->propagate_coeffs();
+
 }
 
 std::vector<bitwidth_config> Simulator::get_neighbour(){
