@@ -136,7 +136,7 @@ void BasisPolySet::generate_polys(int order){
 			p->next->m->coeff = -1.5;
 			p->next->m->arr.push_back(new term{.v = this->var_arr[i], .exp = 1});
 			p->next->prev = p;
-			p->max_exp = 2;
+			p->max_exp = 3;
 			
 			univariate_polys[i].push_back(p);
 	*/

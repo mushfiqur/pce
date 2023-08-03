@@ -131,10 +131,16 @@ class divide_node : public dfg_node{
 	void init(dfg_node* lhs, dfg_node* rhs);
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
+	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
 
 	private:
 	void process_pce_sim(int curr_timestamp);
 	void process_mc_sim(int curr_timestamp);
+
+	private:
+	Eigen::MatrixXd A;
+	Eigen::VectorXd b;
+	Eigen::GMRES<Eigen::MatrixXd> solver;
 
 };
 

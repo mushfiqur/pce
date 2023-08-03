@@ -564,22 +564,31 @@ void divide_node::process(int curr_timestamp){
 }
 
 void divide_node::process_pce_sim(int curr_timestamp){
-	Eigen::MatrixXd A(this->bp_set_ptr->basis_polys.size(), this->bp_set_ptr->basis_polys.size());
-	Eigen::VectorXd z = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(lhs->pce_coeffs[curr_timestamp].data(), lhs->pce_coeffs[curr_timestamp].size());
+	Eigen::VectorXd x;
+	double limit = 1e-15;
+
+	this->b = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(lhs->pce_coeffs[curr_timestamp].data(), lhs->pce_coeffs[curr_timestamp].size());
 
 	for(int x_idx = 0; x_idx < this->bp_set_ptr->basis_polys.size(); x_idx++){
 		for(int z_idx = 0; z_idx < this->bp_set_ptr->basis_polys.size(); z_idx++){
+			A(x_idx,z_idx) = 0.0;
+
 			for(int i = 0; i < this->bp_set_ptr->basis_polys.size(); i++){
 				A(x_idx,z_idx) += (this->bp_set_ptr->expt_table[x_idx][z_idx][i] / this->bp_set_ptr->poly_sqr_expt[x_idx]) * rhs->pce_coeffs[curr_timestamp][i];
 			}
 		}
 	}
 
-	Eigen::GMRES<Eigen::MatrixXd> solver;
-	solver.compute(A);
-	Eigen::VectorXd x = solver.solve(z);
+	this->solver.compute(A);
+	x = solver.solve(this->b);
 
 	this->pce_coeffs[curr_timestamp] = std::vector<double>(x.data(), x.data() + x.rows() * x.cols());
+
+	for(int i = 0; i < this->pce_coeffs[curr_timestamp].size(); i++){
+		if(this->pce_coeffs[curr_timestamp][i] < limit){
+			this->pce_coeffs[curr_timestamp][i] = 0.0;
+		}
+	}
 
 }
 
@@ -589,8 +598,25 @@ void divide_node::process_mc_sim(int curr_timestamp){
 }
 
 void divide_node::set_bitwidth(int width){
-	// TODO
-	return;
+	dfg_node::set_bitwidth(width);
+}
+
+void divide_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+
+	if(sim_type == PCE){
+		this->A.resize(basis_set_size, basis_set_size);
+		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+	}
+	else{
+		this->mc_samples = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(mc_samples, 0.0));
+	}
+	
+	if(this->tail != this){
+		this->tail->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
+		this->tail->rhs->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
+	}
 }
 
 ///////////////////////////////////////////////////
@@ -602,7 +628,6 @@ void add_node::init(dfg_node* lhs, dfg_node* rhs){
 	lhs->tail->add_next_node(this->head);
 	rhs->tail->add_next_node(this->head);
 }
-
 
 void add_node::process(int curr_timestamp){
 	this->last_exec_time = curr_timestamp;

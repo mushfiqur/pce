@@ -188,6 +188,37 @@ void Simulator::run_sim(dfg_node* n){
 	// Propagate signal
 	this->propagate_coeffs();
 
+	if(this->curr_solution.size() != 0){
+		// Store signal coeffs
+		for(int i = 0; i < this->nodes_arr.size(); i++){
+			this->nodes_arr[i]->save_signal_polys();
+		}
+
+		// Set bitwidths
+		for(int i = 0; i < this->curr_solution.size(); i++){
+			this->curr_solution[i].n->set_bitwidth(this->curr_solution[i].bitwidth);
+		}
+
+		//// Regenerate basis_polys
+		bp_set_ptr->regenerate_polys(2);
+		
+		//// Reorder signal coeffs in new basis_poly indexing
+		for(int i = 0; i < nodes_arr.size(); i++){
+			nodes_arr[i]->reorder_signal_polys();
+		}
+
+		// Propagate signal + noise
+		this->set_node_sim_params();
+		this->propagate_coeffs();
+
+		// Remove signal component
+		for(int n = 0; n < this->nodes_arr.size(); n++){
+			this->nodes_arr[n]->remove_signal_component();
+		}
+
+		// Save power
+		this->curr_sol_noise_pwr = this->output_node->get_pwr();
+	}
 }
 
 std::vector<bitwidth_config> Simulator::get_neighbour(){

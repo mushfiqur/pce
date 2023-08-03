@@ -21,6 +21,8 @@ flt_x_3 = flt_x_2 * flt_x
 flt_x_frac = flt_x_3 * c1
 flt_sin_x = flt_x - flt_x_frac
 
+# np.divide(flt_sin_x, flt_x, out=np.zeros_like(flt_sin_x), where=flt_x!=0)
+
 #### FIXED POINT SIM
 fxp_x = quantize(x, 15)                             ## matlab suggested: 15 (14) vs. my suggestion: 16 (15)
 fxp_x_2 = quantize(fxp_x * fxp_x, 12)               ## matlab suggested: 16 (15) vs. my suggestion: 13 (12)
