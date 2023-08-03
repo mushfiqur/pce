@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <random>
+#include <unsupported/Eigen/IterativeSolvers>
 #include "gnuplot-iostream.h"
 
 #include "../include/enums.h"
@@ -126,10 +127,15 @@ class mult_node : public dfg_node{
 
 class divide_node : public dfg_node{
 	public:
-	divide_node(std::string label) : dfg_node(DIVIDE, nullptr, label){};
-	void init(dfg_node* lhs, dfg_node* rhs, SimType sim_type);
-	void process(int curr_timestamp);
+	divide_node(BasisPolySet* bp_set, std::string label);
+	void init(dfg_node* lhs, dfg_node* rhs);
+	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
+
+	private:
+	void process_pce_sim(int curr_timestamp);
+	void process_mc_sim(int curr_timestamp);
+
 };
 
 class input_node : public dfg_node{

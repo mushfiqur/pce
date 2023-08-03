@@ -56,7 +56,10 @@
 		"stdexcept": "cpp",
 		"thread": "cpp",
 		"cinttypes": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"iterativelinearsolvers": "cpp",
+		"iterativesolvers": "cpp",
+		"sparse": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
 	"makefile.launchConfigurations": [

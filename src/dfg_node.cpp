@@ -502,7 +502,6 @@ void mult_node::process_pce_sim(int curr_timestamp){
 				}
 			}
 			this->pce_coeffs[curr_timestamp][k] /= this->bp_set_ptr->poly_sqr_expt[k];
-			// this->pce_coeffs[curr_timestamp][k] /= (*ref_exp_sqr_table)[k];
 		}
 	}
 }
@@ -539,6 +538,60 @@ void mult_node::process_mc_sim(int curr_timestamp){
 // 		delete this->tail;
 // 	}
 // }
+
+///////////////////////////////////////////////////
+
+divide_node::divide_node(BasisPolySet* bp_set, std::string label) : dfg_node(DIVIDE, bp_set, label){
+	this->bp_set_ptr = bp_set;
+};
+
+void divide_node::init(dfg_node* lhs, dfg_node* rhs){
+	this->head->lhs = lhs->tail;
+	this->head->rhs = rhs->tail;
+
+	lhs->tail->add_next_node(this->head);
+	rhs->tail->add_next_node(this->head);
+}
+
+void divide_node::process(int curr_timestamp){
+	this->last_exec_time = curr_timestamp;
+
+	if(this->sim_type == PCE){
+		this->process_pce_sim(curr_timestamp);
+	}else{
+		this->process_mc_sim(curr_timestamp);
+	}
+}
+
+void divide_node::process_pce_sim(int curr_timestamp){
+	Eigen::MatrixXd A(this->bp_set_ptr->basis_polys.size(), this->bp_set_ptr->basis_polys.size());
+	Eigen::VectorXd z = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(lhs->pce_coeffs[curr_timestamp].data(), lhs->pce_coeffs[curr_timestamp].size());
+
+	for(int x_idx = 0; x_idx < this->bp_set_ptr->basis_polys.size(); x_idx++){
+		for(int z_idx = 0; z_idx < this->bp_set_ptr->basis_polys.size(); z_idx++){
+			for(int i = 0; i < this->bp_set_ptr->basis_polys.size(); i++){
+				A(x_idx,z_idx) += (this->bp_set_ptr->expt_table[x_idx][z_idx][i] / this->bp_set_ptr->poly_sqr_expt[x_idx]) * rhs->pce_coeffs[curr_timestamp][i];
+			}
+		}
+	}
+
+	Eigen::GMRES<Eigen::MatrixXd> solver;
+	solver.compute(A);
+	Eigen::VectorXd x = solver.solve(z);
+
+	this->pce_coeffs[curr_timestamp] = std::vector<double>(x.data(), x.data() + x.rows() * x.cols());
+
+}
+
+void divide_node::process_mc_sim(int curr_timestamp){
+	// TODO
+	return;
+}
+
+void divide_node::set_bitwidth(int width){
+	// TODO
+	return;
+}
 
 ///////////////////////////////////////////////////
 
