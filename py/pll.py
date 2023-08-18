@@ -16,6 +16,8 @@ e_F = np.zeros(100)
 sin_out = np.zeros(100)
 cos_out = np.ones(100)
 
+trig_arg = np.zeros(100)
+
 for n in range(99):
     input_signal[n] = np.cos(2*np.pi*(k/N)*n + np.pi)
 
@@ -35,8 +37,10 @@ for n in range(99):
     else:
         phase_estimate[n] = K_0 * e_F[n]
 
-    sin_out[n] = -np.sin(2*np.pi*(k/N)*(n) + phase_estimate[n])
-    cos_out[n] = np.cos(2*np.pi*(k/N)*(n) + phase_estimate[n])
+    trig_arg[n] = 2*np.pi*(k/N)*(n) + phase_estimate[n]
+
+    sin_out[n] = -np.sin(trig_arg[n])
+    cos_out[n] = np.cos(trig_arg[n])
 
 
 
@@ -58,4 +62,5 @@ ax2 = fig.add_subplot(212)
 ax2.plot(e_F)
 plt.grid()
 ax2.set_title('Filtered Error')
+plt.tight_layout()
 plt.show()

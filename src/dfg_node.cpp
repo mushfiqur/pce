@@ -46,12 +46,14 @@ void dfg_node::add_next_node(dfg_node * n){
 	}
 }
 
-void dfg_node::print(){
-	for(int t = 0; t < this->pce_coeffs.size(); t++){
-		std::cerr << "[" << this->label.c_str() << " @ " << t << "] " << std::endl;
+void dfg_node::print(bool print_last){
+	if(print_last){
+		int last_idx = this->pce_coeffs.size() - 1;
+
+		std::cerr << "[" << this->label.c_str() << " @ " << last_idx << "] " << std::endl;
 		for(int i = 0; i < this->pce_coeffs[t].size(); i++){
-			if(this->pce_coeffs[t][i] != 0){
-				std::cerr << this->pce_coeffs[t][i] << ": ";
+			if(this->pce_coeffs[last_idx][i] != 0){
+				std::cerr << this->pce_coeffs[last_idx][i] << ": ";
 				this->bp_set_ptr->basis_polys[i]->print();
 				std::cerr << std::endl;
 			}
@@ -61,6 +63,23 @@ void dfg_node::print(){
 		}
 
 		std::cerr << std::endl;
+	}
+	else{
+		for(int t = 0; t < this->pce_coeffs.size(); t++){
+			std::cerr << "[" << this->label.c_str() << " @ " << t << "] " << std::endl;
+			for(int i = 0; i < this->pce_coeffs[t].size(); i++){
+				if(this->pce_coeffs[t][i] != 0){
+					std::cerr << this->pce_coeffs[t][i] << ": ";
+					this->bp_set_ptr->basis_polys[i]->print();
+					std::cerr << std::endl;
+				}
+				else{
+					// std::cout << this->pce_coeffs[t][i] << std::endl;
+				}
+			}
+
+			std::cerr << std::endl;
+		}
 	}
 
 }
@@ -128,12 +147,12 @@ void dfg_node::set_bitwidth(int width){
 		for(int i = 0; i < this->next_nodes.size(); i++){
 			this->tail->add_next_node(this->next_nodes[i]);
 
-			if(this->next_nodes[i]->lhs == this){
-				this->next_nodes[i]->lhs = this->tail;
+			if(this->next_nodes[i]->head->lhs == this){
+				this->next_nodes[i]->head->lhs = this->tail;
 			}
 
-			if(this->next_nodes[i]->rhs == this){
-				this->next_nodes[i]->rhs = this->tail;
+			if(this->next_nodes[i]->head->rhs == this){
+				this->next_nodes[i]->head->rhs = this->tail;
 			}
 
 			for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
@@ -174,13 +193,13 @@ double dfg_node::get_pwr(){
 	return pwr;
 }
 
-void dfg_node::print_pwr(BasisPolySet& bp_set){
+void dfg_node::print_pwr(){
 	double pwr;
 
 	for(int t = 0; t < this->pce_coeffs.size(); t++){
 		pwr = 0.0;
 		for(int i = 0; i < this->pce_coeffs[t].size(); i++){
-			pwr += this->pce_coeffs[t][i] * this->pce_coeffs[t][i] * bp_set.poly_sqr_expt[i];
+			pwr += this->pce_coeffs[t][i] * this->pce_coeffs[t][i] * this->bp_set_ptr->poly_sqr_expt[i];
 		}
 		std::cerr << "[" << this->label.c_str() << " @ " << t << "] " << pwr << std::endl;
 	}
@@ -207,13 +226,13 @@ void dfg_node::get_mc_stats(std::vector<double>& mean_arr, std::vector<double>& 
 	}
 }
 
-void dfg_node::get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr, BasisPolySet& bp_set){
+void dfg_node::get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr){
 	for(int t = 0; t < var_arr.size(); t++){
 		var_arr[t] = 0.0;
 		mean_arr[t] = 0.0;
 		for(int i = 0; i < this->pce_coeffs[t].size(); i++){
-			var_arr[t] += this->pce_coeffs[t][i] * this->pce_coeffs[t][i] * bp_set.poly_sqr_expt[i];
-			mean_arr[t] += this->pce_coeffs[t][i] * bp_set.poly_expt[i];
+			var_arr[t] += this->pce_coeffs[t][i] * this->pce_coeffs[t][i] * this->bp_set_ptr->poly_sqr_expt[i];
+			mean_arr[t] += this->pce_coeffs[t][i] * this->bp_set_ptr->poly_expt[i];
 		}
 	}
 }
@@ -263,7 +282,7 @@ void dfg_node::reorder_signal_polys(){
 }
 
 dfg_node::~dfg_node(){
-	if(this->tail != this){
+	if(this->tail != this && this->t != SINE_BLOCK && this->t != COSINE_BLOCK){
 		delete this->tail->rhs;
 		delete this->tail;
 	}
@@ -275,34 +294,18 @@ dfg_node::~dfg_node(){
 			}
 		}
 	}
-
-	
 }
 
 ///////////////////////////////////////////////////
 
-input_node::input_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT_SIGNAL, bp_set, label, node_id){
+input_node::input_node(BasisPolySet* bp_set, std::string label) : dfg_node(INPUT_SIGNAL, bp_set, label){
 	this->bp_set_ptr = bp_set;
 	this->set_range(-1.0, 1.0);
-
-	bool var_exists = false;
-	for(int i = 0; i < bp_set->var_arr.size(); i++){
-		if(bp_set->var_arr[i]->id == node_id){
-			var_exists = true;
-			this->v = bp_set->var_arr[i];
-			break;
-		}
-	}
-
-	if(!var_exists){
-		var* v = new var(1, -1, node_id);
-		bp_set->add_variable(v);
-		this->v = v;
-	}
 	
-	std::random_device rd;
-	this->mt = std::mt19937(rd());
-	this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
+	// TODO: FIX - re-enable support for Monte Carlo sims
+	// std::random_device rd;
+	// this->mt = std::mt19937(rd());
+	// this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
 };
 
 
@@ -321,9 +324,36 @@ void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 
 	if(sim_type == PCE){
 		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+		
 		for(int t = 0; t < this->pce_coeffs.size(); t++){
-			this->pce_coeffs[t][0] = (unfm_dist_param_a + unfm_dist_param_b) / 2.0;
-			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+			if(this->cfg.has_signal){
+				if(this->cfg.waveform == COSINE){
+					this->pce_coeffs[t][0] += std::cos(2.0*M_PI*(this->cfg.freq)*t);
+				}
+				else if(this->cfg.waveform == SINE){
+					this->pce_coeffs[t][0] += std::sin(2.0*M_PI*(this->cfg.freq)*t);
+				}
+				else if(this->cfg.waveform == DC){
+					this->pce_coeffs[t][0] += this->cfg.freq;
+				}
+			}
+
+			if(this->cfg.has_dist){
+				this->pce_coeffs[t][0] += (unfm_dist_param_a + unfm_dist_param_b) / 2.0;
+				if(t < this->vars.size()){
+					this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[t]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+				}
+				else{
+					this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[ this->vars.size() - 1 ]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+				}
+			}
+
+
+			// this->pce_coeffs[t][0] = (unfm_dist_param_a + unfm_dist_param_b) / 2.0;
+
+			// this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[0]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+
+			// this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
 		}
 	}
 	else{
@@ -354,6 +384,24 @@ void input_node::set_bitwidth(int width){
 	// this->bitwidth = width;
 	dfg_node::set_bitwidth(width);
 	this->dist = std::uniform_real_distribution<double>(0.0, std::pow(2.0, -1.0*width));
+}
+
+void input_node::add_signal(WaveType wave, double freq){
+	this->cfg.waveform = wave;
+	this->cfg.freq = freq;
+	this->cfg.has_signal = true;
+}
+
+void input_node::add_dist(int num_rand_vars){
+	var* v;
+	for(int i = 0; i < num_rand_vars; i++){
+		v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
+		this->bp_set_ptr->add_variable(v);
+		this->vars.push_back(v);
+	}
+
+	this->cfg.has_dist = true;
+	this->cfg.propagate_unique_dists = true;
 }
 
 ///////////////////////////////////////////////////

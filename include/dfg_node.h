@@ -11,17 +11,20 @@
 #include "../include/enums.h"
 #include "../include/BasisPolys.h"
 
-typedef enum
-{
-	ADD,
-	SUB,
-	MULT,
-	DIVIDE,
-	INPUT_SIGNAL,
-	INPUT_NOISE,
-	DELAY,
-	CONST
-} NodeType;
+
+typedef enum{
+	SINE,
+	COSINE,
+	DC
+} WaveType;
+
+typedef struct{
+	bool propagate_unique_dists = false;
+	bool has_signal = false;
+	bool has_dist = false;
+	WaveType waveform;
+	double freq = 0.0;
+} InputNodeConfig;
 
 struct signal_polys {
 	double coeff;
@@ -53,17 +56,16 @@ class dfg_node{
 	~dfg_node();
 
 	void add_next_node(dfg_node* n);
-	void print();
+	void print(bool print_last=false);
 	void print_signal_coeffs();
-	void remove_signal_component();
 	bool node_args_ready(int curr_timestamp);
-	void print_pwr(BasisPolySet& bp_set);
-	double get_pwr();
+	void print_pwr();
+	virtual double get_pwr();
 	void get_mc_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr);
-	void get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr, BasisPolySet& bp_set);
-	void save_signal_polys();
-	void reorder_signal_polys();
-
+	virtual void get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr);
+	virtual void save_signal_polys();
+	virtual void reorder_signal_polys();
+	virtual void remove_signal_component();
 	virtual void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type);
 	
 	virtual void process(int curr_timestamp);
@@ -146,21 +148,27 @@ class divide_node : public dfg_node{
 
 class input_node : public dfg_node{
 	private:
-	var* v;
+	// var* v;
+	std::vector<var*> vars;
 	double unfm_dist_param_a;
 	double unfm_dist_param_b;
 	BasisPolySet* bp_set_ptr;
+
+	InputNodeConfig cfg;
 
 	std::mt19937 mt;
 	std::uniform_real_distribution<double> dist;
 
 	public:
-	input_node(BasisPolySet* bp_set, int node_id, std::string label);
+	input_node(BasisPolySet* bp_set, std::string label);
 	void set_range(double a, double b);
 	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
 	void process(int curr_timestamp) override;
 	void init();
 	void set_bitwidth(int width) override;
+
+	void add_signal(WaveType wave, double freq);
+	void add_dist(int num_rand_vars);
 };
 
 class noise_node : public dfg_node{

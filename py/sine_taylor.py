@@ -66,3 +66,36 @@ With a target of 92 dB, I suggest:
 } (tot: 56 bits)
 which hits 92.7 dB.
 '''
+
+''''''''''''''' IMPORTANT '''''''''''''''
+###### TAYLOR SERIES AROUND POINT a #####
+size=100000
+
+a = np.pi/2.0
+# a = 0.0
+x = a + np.random.uniform(low=-1.0, high=1.0, size=size)
+
+d = x - a
+
+top_a = d * d
+top_b = top_a * d
+top_c = top_b * (1.0/6.0)*np.cos(a)
+mid_a = top_a * (-1.0/2.0)*np.sin(a)
+bot_a = d * np.cos(a)
+
+y = np.sin(a) + top_c + mid_a + bot_a
+# y = np.sin(x)
+
+pce_rv = np.random.uniform(low=-1, high=1, size=size)
+# y_pce = 1.1 * pce_rv
+y_pce = (5.0/6.0) - (1.0/3.0)*(1.5*np.square(pce_rv) - 0.5)
+
+
+print("Actual var: {0}".format(np.mean(np.square(y))))
+print("Predicted var: {0}".format(np.mean(np.square(y_pce))))
+
+
+plt.hist(y, bins=1000, density=True)
+plt.hist(y_pce, bins=1000, density=True)
+plt.show()
+exit()

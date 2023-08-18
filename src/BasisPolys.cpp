@@ -35,6 +35,9 @@ void BasisPolySet::generate_polys(int order){
 	// }
 
 	///////////////////////////////////////////////////
+	std::clog << "Num vars: " << this->var_arr.size() << std::endl << std::endl;
+
+	std::clog << "Generating basis polynomials.... ";
 	this->order = order;
 	std::vector<std::vector<polynomial*>> univariate_polys(this->num_vars);
 
@@ -107,6 +110,7 @@ void BasisPolySet::generate_polys(int order){
 			p->max_exp = 0;
 			p->prev = nullptr;
 			p->next = nullptr;
+			p->max_exp = 0;
 
 			univariate_polys[i].push_back(p);
 
@@ -116,6 +120,7 @@ void BasisPolySet::generate_polys(int order){
 			p->max_exp = 1;
 			p->next = nullptr;
 			p->prev = nullptr;
+			p->max_exp = 1;
 
 			univariate_polys[i].push_back(p);
 
@@ -144,8 +149,23 @@ void BasisPolySet::generate_polys(int order){
 	}
 
 	///////////////////////////////////////////////////
-	faster_tensor_prod(univariate_polys, this->basis_polys, order);
+
+	if(this->num_vars != 0){
+		faster_tensor_prod(univariate_polys, this->basis_polys, order);
+	}
+	else{
+		p = new polynomial();
+		p->m->coeff = 1.0;
+		p->max_exp = 0;
+		p->prev = nullptr;
+		p->next = nullptr;
+		p->max_exp = 0;
+
+		this->basis_polys.push_back(p);
+	}
+	
 	this->set_size = this->basis_polys.size();
+
 
 	// TODO: Fix this very bad hack to keep accomodate else block within faster_tensor_prod
 	if(univariate_polys.size() > 1){
@@ -157,11 +177,13 @@ void BasisPolySet::generate_polys(int order){
 	}
 	///////////////////////////////////////////////////
 	
-	// std::cout << "Basis set has: " << this->set_size << " polynomials" << std::endl;
 
 	gen_exp_table();
 	gen_poly_expt_table();
 	gen_poly_expt_sqr_table();
+
+	std::clog << " DONE" << std::endl;
+	std::clog << "    " << "Basis set has " << this->set_size << " polynomials" << std::endl;
 
 }
 
@@ -170,6 +192,7 @@ void BasisPolySet::regenerate_polys(int order){
 		delete this->basis_polys[i];
 	}
 	this->basis_polys.clear();
+	std::clog << "-----------------------" << std::endl;
 	this->generate_polys(order);
 }
 

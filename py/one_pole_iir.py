@@ -11,25 +11,26 @@ size = 100000
 
 iters = 10
 
-x = np.random.uniform(low=-1.0, high=1.0, size=size)
+# x = np.random.uniform(low=-1.0, high=1.0, size=size)
+x = np.cos(2.0 * np.pi * (1.0/15.0) * np.arange(0, size) + np.random.uniform(low=0.0, high=2.0*np.pi))
 
 state_y = np.zeros(size)
 
-a = np.zeros((iters, size))
-y = np.zeros((iters, size))
-y_d = np.zeros((iters, size))
-y_d_c = np.zeros((iters, size))
+a = np.zeros(size)
+y = np.zeros(size)
+y_d = np.zeros(size)
+y_d_c = np.zeros(size)
 
-fxp_x_c = np.zeros((iters, size))
-fxp_y = np.zeros((iters, size))
-fxp_y_d = np.zeros((iters, size))
-fxp_y_d_c = np.zeros((iters, size))
+fxp_x_c = np.zeros(size)
+fxp_y = np.zeros(size)
+fxp_y_d = np.zeros(size)
+fxp_y_d_c = np.zeros(size)
 
 c1 = 0.5
 c2 = 0.5
 
-for i in range(iters):
-    a[i] = x * c2
+for i in range(size):
+    a[i] = x[i] * c2
     
     if(i - 1 < 0):
         y_d[i] = 0
@@ -41,23 +42,23 @@ for i in range(iters):
     y[i] = a[i] + y_d_c[i]
 
 #### FIXED POINT SIM
-fxp_x = quantize(x, 15)
+fxp_x = quantize(x, 8)
 
-for i in range(iters):
-    fxp_x_c[i] = quantize(fxp_x * c2, 16)
+for i in range(size):
+    fxp_x_c[i] = quantize(fxp_x[i] * c2, 11)
     
     if(i - 1 < 0):
         fxp_y_d[i] = 0
     else:
         fxp_y_d[i] = fxp_y[i-1]
     
-    fxp_y_d_c[i] = quantize(fxp_y_d[i] * c1, 16)
+    fxp_y_d_c[i] = quantize(fxp_y_d[i] * c1, 11)
 
     fxp_y[i] = fxp_x_c[i] + fxp_y_d_c[i]
 
 
 #### RESULTS
-sig_pwr = 1.0/3.0
+sig_pwr = np.mean(np.square(x))
 noise_pwr = np.mean(np.square(y - fxp_y))
 
 print("flt_out - fxp_out: {0}".format(noise_pwr))

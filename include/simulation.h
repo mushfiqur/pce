@@ -28,14 +28,17 @@ class Simulator{
 	void set_output_node(dfg_node& n);
 	void set_sim_params(SimType sim_t, int tot_sim_steps, int mc_samples=100000);
 	void run_sim(dfg_node* n);
-	void run_sim_anneal(dfg_node* n, double sig_pwr, double tgt_snr, int tot_iters);
+	void run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters);
 	void add_plot_node(dfg_node& n);
 	void plot();
+	void plot_time();
 	void print();
 
 	private:
 	dfg_node* head;
 	dfg_node* output_node;
+
+	double output_sig_pwr;
 
 	std::mt19937 mt;
 	std::uniform_real_distribution<double> real_dist;

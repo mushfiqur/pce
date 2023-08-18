@@ -1,0 +1,85 @@
+int main(){
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
+	
+	// Define Netlist
+	input_node I(&basis_poly, 1, "I");
+	input_node Q(&basis_poly, 2, "Q");
+	
+	// delay_node I_d(&basis_poly, "i_d");
+	// delay_node Q_d(&basis_poly, "q_d");
+	
+	input_node I_d(&basis_poly, 3, "I");
+	input_node Q_d(&basis_poly, 4, "Q");
+
+	mult_node a(&basis_poly, "a");
+	mult_node b(&basis_poly, "b");
+	mult_node c(&basis_poly, "c");
+	mult_node d(&basis_poly, "d");
+
+	sub_node e(&basis_poly, "e");
+	add_node f(&basis_poly, "f");
+
+	divide_node g(&basis_poly, "g");
+
+	// Connect/Init Netlist
+	// I_d.init(&I);
+	// Q_d.init(&Q);
+
+	a.init(&Q_d, &I);
+	b.init(&I_d, &Q);
+	c.init(&I_d, &I);
+	d.init(&Q, &Q_d);
+
+	e.init(&a, &b);
+	f.init(&c, &d);
+
+	g.init(&e, &f);
+
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(2);
+
+	//// Set up Simulator
+	Simulator sim = Simulator();
+	sim.add_basis_poly_set(basis_poly);
+
+	// Add nodes to simulator
+	sim.add_node(I);
+	sim.add_node(Q);
+	sim.add_node(I_d);
+	sim.add_node(Q_d);
+	sim.add_node(a);
+	sim.add_node(b);
+	sim.add_node(c);
+	sim.add_node(d);
+	sim.add_node(e);
+	sim.add_node(f);
+	sim.add_node(g);
+	
+	// // Set bitwidths
+		// sim.set_bitwidth(I, 4);
+		// sim.set_bitwidth(Q, 4);
+		// sim.set_bitwidth(a, 4);
+		// sim.set_bitwidth(b, 4);
+		// sim.set_bitwidth(c, 4);
+		// sim.set_bitwidth(d, 4);
+
+	// Set output node
+	sim.set_output_node(g);
+
+	// Run Sim
+	int tot_sim_steps = 10;
+	// sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
+	// sim.run_sim(&pll_in);
+
+	sim.set_sim_params(PCE, tot_sim_steps);
+	sim.run_sim(&I);
+
+	e.print();
+	f.print();
+
+	g.print();
+	// sim.add_plot_node(g);
+	// sim.plot();
+
+	return 0;
+}

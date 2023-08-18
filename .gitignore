@@ -1,3 +1,4 @@
 valgrind_log
 main
 samples/
+build/

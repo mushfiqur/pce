@@ -13,4 +13,18 @@ typedef enum{
 	GAUSSIAN
 } RandVarDist;
 
+typedef enum
+{
+	ADD,
+	SUB,
+	MULT,
+	DIVIDE,
+	INPUT_SIGNAL,
+	INPUT_NOISE,
+	DELAY,
+	CONST,
+	SINE_BLOCK,
+	COSINE_BLOCK
+} NodeType;
+
 #endif
