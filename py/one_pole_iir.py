@@ -11,8 +11,8 @@ size = 100000
 
 iters = 10
 
-# x = np.random.uniform(low=-1.0, high=1.0, size=size)
-x = np.cos(2.0 * np.pi * (1.0/15.0) * np.arange(0, size) + np.random.uniform(low=0.0, high=2.0*np.pi))
+x = np.random.uniform(low=-1.0, high=1.0, size=size)
+# x = np.cos(2.0 * np.pi * (1.0/15.0) * np.arange(0, size) + np.random.uniform(low=0.0, high=2.0*np.pi))
 
 state_y = np.zeros(size)
 
@@ -41,24 +41,27 @@ for i in range(size):
 
     y[i] = a[i] + y_d_c[i]
 
+print("Power: {0}".format(np.mean(np.square(y))))
+exit()
 #### FIXED POINT SIM
-fxp_x = quantize(x, 8)
+fxp_x = quantize(x, 3)
 
 for i in range(size):
-    fxp_x_c[i] = quantize(fxp_x[i] * c2, 11)
+    fxp_x_c[i] = quantize(fxp_x[i] * c2, 6)
     
     if(i - 1 < 0):
         fxp_y_d[i] = 0
     else:
         fxp_y_d[i] = fxp_y[i-1]
     
-    fxp_y_d_c[i] = quantize(fxp_y_d[i] * c1, 11)
+    fxp_y_d_c[i] = quantize(fxp_y_d[i] * c1, 3)
 
     fxp_y[i] = fxp_x_c[i] + fxp_y_d_c[i]
 
 
 #### RESULTS
-sig_pwr = np.mean(np.square(x))
+# sig_pwr = np.mean(np.square(x))
+sig_pwr = 1.0/3.0
 noise_pwr = np.mean(np.square(y - fxp_y))
 
 print("flt_out - fxp_out: {0}".format(noise_pwr))

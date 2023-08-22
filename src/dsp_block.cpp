@@ -201,7 +201,15 @@ double sine_node::get_pwr(){
 		}
 	}
 
-	return out[out.size() - 1];
+	double max = 0.0;
+	for(int i = 0; i < out.size(); i++){
+		if(out[i] > max){
+			max = out[i];
+		}
+	}
+
+	return max;
+	// return out[out.size() - 1];
 }
 
 sine_node::~sine_node(){
@@ -386,8 +394,6 @@ void cosine_node::remove_signal_component(){
 }
 
 double cosine_node::get_pwr(){
-	std::clog << "MY get power" << std::endl;
-
 	double alpha = 0.05;
 	double alpha2 = 0.1;
 
@@ -421,7 +427,15 @@ double cosine_node::get_pwr(){
 		}
 	}
 
-	return out[out.size() - 1];
+	double max = 0.0;
+	for(int i = 0; i < out.size(); i++){
+		if(out[i] > max){
+			max = out[i];
+		}
+	}
+
+	return max;
+	// return out[out.size() - 1];
 }
 
 void cosine_node::get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr){
@@ -466,5 +480,55 @@ cosine_node::~cosine_node(){
 	}
 	for(int i = 0; i < this->nodes.size(); i++){
 		delete this->nodes[i];
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+collate_node::collate_node(BasisPolySet* bp_set, std::string label) : dfg_node(DELAY, bp_set, label){
+	var* v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
+	this->v = v;
+	this->bp_set_ptr->add_variable(v);
+}
+
+void collate_node::init(dfg_node* arg_node){
+	this->head->lhs = arg_node->tail;
+	this->head->rhs = nullptr;
+
+	arg_node->tail->add_next_node(this);
+}
+
+void collate_node::set_bitwidth(int width){
+	// Not supported
+	return;
+}
+
+void collate_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+
+	this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+}
+
+void collate_node::process(int curr_timestamp){
+	this->last_exec_time = curr_timestamp;
+
+	// Get mean and var from prev timestamp
+	double mean = 0.0;
+	double var = 0.0;
+
+	if(curr_timestamp - 1 >= 0){
+		for(int i = 0; i < this->lhs->pce_coeffs[curr_timestamp - 1].size(); i++){
+			var  += lhs->pce_coeffs[curr_timestamp - 1][i] * lhs->pce_coeffs[curr_timestamp - 1][i] * this->bp_set_ptr->poly_sqr_expt[i];
+			mean += lhs->pce_coeffs[curr_timestamp - 1][i] * this->bp_set_ptr->poly_expt[i];
+		}
+
+		this->pce_coeffs[curr_timestamp][0] = mean;
+		this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->v->id)] = std::sqrt(3.0 * (var - (mean * mean)));
+	}
+	else{
+		for(int i = 0; i < this->pce_coeffs[curr_timestamp].size(); i++){
+			this->pce_coeffs[curr_timestamp][i] = 0.0;
+		}
 	}
 }

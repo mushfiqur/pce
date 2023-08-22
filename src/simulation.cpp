@@ -41,12 +41,12 @@ void Simulator::set_bitwidth(dfg_node& n, int bitwidth){
 }
 
 void Simulator::set_output_node(dfg_node& n){
-	if(n.tail != &n){
-		this->output_node = n.tail;
-	}
-	else{
+	// if(n.tail != &n){
+		// this->output_node = n.tail;
+	// }
+	// else{
 		this->output_node = &n;
-	}
+	// }
 }
 
 void Simulator::calc_bitwidths(){
@@ -75,12 +75,15 @@ void Simulator::initialize(dfg_node* n){
 		this->nodes_arr[i]->save_signal_polys();
 	}
 
-	// this->output_sig_pwr = this->output_node->get_pwr();
+	// for(int i = 0; i < this->output_node->pce_coeffs.size(); i++){
+	// 	this->output_sig_pwr += this->output_node->pce_coeffs[i][0] * this->output_node->pce_coeffs[i][0];
+	// }
+	// this->output_sig_pwr /= this->output_node->pce_coeffs.size();;
 
-	for(int i = 0; i < this->output_node->pce_coeffs.size(); i++){
-		this->output_sig_pwr += this->output_node->pce_coeffs[i][0] * this->output_node->pce_coeffs[i][0];
-	}
-	this->output_sig_pwr /= this->output_node->pce_coeffs.size();;
+	this->output_sig_pwr = this->output_node->get_pwr();
+	std::cout << "Output power is: " << this->output_sig_pwr << std::endl;
+	// this->output_sig_pwr = 0.5;
+
 	// Set bitwidths
 	for(int i = 0; i < this->curr_solution.size(); i++){
 		this->curr_solution[i].n->set_bitwidth(this->curr_solution[i].bitwidth);
@@ -127,12 +130,29 @@ double Simulator::try_solution(std::vector<bitwidth_config>& proposed_sol){
 }
 
 void Simulator::print(){
-	std::cout << "\n(" << this->curr_sol_noise_pwr << ") { \n";
+	std::cout << "Solution: \n(" <<  10.0*std::log10( this->output_sig_pwr / this->curr_sol_noise_pwr ) << " dB) { \n";
 	for(int i = 0; i < this->curr_solution.size() - 1; i++){
 		std::cout << "\t" << this->curr_solution[i].n->label << ": " << this->curr_solution[i].bitwidth << ", \n";
 	}
 	std::cout << "\t" << this->curr_solution[this->curr_solution.size() - 1].n->label << ": " << this->curr_solution[this->curr_solution.size() - 1].bitwidth << std::endl;
 	std::cout << "}\n";
+}
+
+void disp_progress_bar(int curr, int tot_time){
+	float progress = ((float)curr+1)/tot_time;
+
+	int barWidth = 40;
+
+	std::cout << "[";
+	int pos = barWidth * progress;
+	for (int i = 0; i < barWidth; ++i) {
+		if (i < pos) std::cout << "=";
+		else if (i == pos) std::cout << ">";
+		else std::cout << " ";
+	}
+	std::cout << "] " << int(progress * 100.0) << " %\r";
+	std::cout.flush();
+
 }
 
 void Simulator::run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters){
@@ -146,11 +166,15 @@ void Simulator::run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters){
 	this->initialize(n);
 	double tgt_noise_pwr = this->output_sig_pwr / std::pow(10.0, tgt_snr / 10.0);
 	
-	std::cout << "Tgt: " << tgt_noise_pwr << std::endl;
-	std::cout << this->curr_sol_noise_pwr << std::endl;
+	std::cout << std::endl;
+	std::cout << "Running Simulated Annealing " << "(SNR = " << tgt_snr << " dB) ..." << std::endl;
+	std::cout << "  Target noise power: " << tgt_noise_pwr << std::endl;
+	std::cout << "  Initial noise power: " << this->curr_sol_noise_pwr << std::endl;
+	std::cout << std::endl;
 
 	for(int iter = 0; iter < tot_iters; iter++){
-		std::clog << "[" << iter << "/" << tot_iters << "] ";
+		// std::clog << "[" << iter << "/" << tot_iters << "] ";
+		disp_progress_bar(iter, tot_iters);
 		// Get neighboring solution
 		proposed_sol = get_neighbour();
 
@@ -181,7 +205,8 @@ void Simulator::run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters){
 		// temperature = 1.0 / std::log10(2 + iter);
 		temperature = 0.01 * temperature;
 	}
-	std::cout << "Tgt: " << tgt_noise_pwr << std::endl;
+
+	std::cout << std::endl << std::endl;
 
 	// print();
 }
@@ -204,6 +229,11 @@ void Simulator::run_sim(dfg_node* n){
 	// Propagate signal
 	this->propagate_coeffs();
 
+
+	this->output_sig_pwr = this->output_node->get_pwr();
+	std::cout << "Output power is: " << this->output_sig_pwr << std::endl;
+
+
 	if(this->curr_solution.size() != 0){
 		// Store signal coeffs
 		std::clog << "Saving signal polynomials.... ";
@@ -211,7 +241,6 @@ void Simulator::run_sim(dfg_node* n){
 			this->nodes_arr[i]->save_signal_polys();
 		}
 		std::clog << "DONE" << std::endl;
-
 
 		// Set bitwidths
 		std::clog << "Setting bitwidths.... ";	
@@ -264,7 +293,7 @@ std::vector<bitwidth_config> Simulator::get_neighbour(){
 }
 
 void Simulator::propagate_coeffs(){
-	std::clog << "Propagating coefficients.... ";
+	// std::clog << "Propagating coefficients.... ";
 	std::deque<dfg_node*> q;
 
 	// std::clog << "    " << "t = ";
@@ -312,31 +341,19 @@ void Simulator::propagate_coeffs(){
 						q.push_front(curr_node->rhs);
 					}
 				}
-
-				// if(curr_node->rhs != nullptr &&
-				// curr_node->rhs->last_exec_time < curr_timestamp &&
-				// std::find(q.begin(), q.end(), curr_node->rhs) == q.end())
-				// {
-				// 	q.push_front(curr_node->rhs);
-				// }
 			}
 		}
 
 		// std::cout << "---------" << std::endl;
 	}
 
-	std::clog << "DONE" << std::endl;
+	// std::clog << "DONE" << std::endl;
 	// std::clog << std::endl;
 
 }
 
 void Simulator::add_plot_node(dfg_node& n){
-	// if(n.tail != &n){
-		// this->nodes_to_plot.push_back(n.tail);
-	// }
-	// else{
-		this->nodes_to_plot.push_back(&n);
-	// }
+	this->nodes_to_plot.push_back(&n);
 }
 
 void Simulator::plot_time(){
@@ -371,8 +388,8 @@ void Simulator::plot_time(){
 
 	// Plotting
 	Gnuplot gp("gnuplot");    
-	// gp << "set terminal qt size 1000,600 title 'Simulation Results'\n";
-	gp << "set terminal png size 1000,600\n";
+	gp << "set terminal qt size 1000,600 title 'Simulation Results'\n";
+	// gp << "set terminal png size 1000,600\n";
 	gp << "set key noenhanced\n";
 	gp << "set output '/home/mushf/pce/plots/results.png'\n";
 	gp << "set multiplot layout " << std::to_string(nrows) << "," << std::to_string(ncols) << " rowsfirst\n";
@@ -450,8 +467,8 @@ void Simulator::plot(){
 
 	// Plotting
 	Gnuplot gp("gnuplot");    
-	// gp << "set terminal qt size 1000,600 title 'Simulation Results'\n";
-	gp << "set terminal png size 1000,600\n";
+	gp << "set terminal qt size 1000,600 title 'Simulation Results'\n";
+	// gp << "set terminal png size 1000,600\n";
 	gp << "set key noenhanced\n";
 	gp << "set output '/home/mushf/pce/plots/results.png'\n";
 	gp << "set multiplot layout " << std::to_string(nrows) << "," << std::to_string(ncols) << " rowsfirst\n";

@@ -8,7 +8,7 @@ def quantize(f_val, bits):
 
 size = 100
 
-k = 5
+k = 1
 N = 15
 K_p = 0.2667
 K_i = 0.0178
@@ -33,10 +33,10 @@ fxp_cos_out = np.ones(size)
 
 #### FLOATING POINT SIM
 # input_signal = np.sin(2*np.pi*(k/N)*np.arange(0, size)) + np.random.uniform(low=-1, high=1, size=size)
-snr = 5.0
+snr = 3.0
 end = np.sqrt(3.0 * (0.5 / np.power(10.0, snr/10.0)))
-# input_signal = np.sin(2*np.pi*(k/N)*np.arange(0, size)) + np.random.uniform(low=-end, high=end, size = size)
-input_signal = np.sin(2*np.pi*(k/N)*np.arange(0, size))
+input_signal = np.sin(2*np.pi*(k/N)*np.arange(0, size) + np.random.uniform(low=-end, high=end, size = size))
+# input_signal = np.sin(2*np.pi*(k/N)*np.arange(0, size))
 
 for n in range(len(input_signal)):
     if(n - 1 > 0):
@@ -58,28 +58,25 @@ for n in range(len(input_signal)):
     sin_out[n] = -1*np.sin(phase_estimate[n])
     cos_out[n] = np.cos(phase_estimate[n])
 
-# plt.plot(input_signal)
-# plt.plot(cos_out)
-# plt.show()
-
-# print(np.max(trig_arg))
-# print("Actual pwr: {0}".format(np.mean(np.square(sin_out))))
-# print("Predicted pwr: {0}".format(0.2))
-
 #### FIXED POINT SIM
-bitwidth = 1
+
+pll_in_width = 2
+e_d_width    = 3
+kp_ed_width  = 4
+ki_ed_width  = 9
+
 for n in range(size):
-    fxp_input_signal[n] = quantize(input_signal[n], 25)
+    fxp_input_signal[n] = quantize(input_signal[n], pll_in_width)
 
 for n in range(size):
     if(n - 1 > 0):
-        fxp_e_D[n] = quantize((fxp_input_signal[n] * fxp_sin_out[n-1]), 33)
+        fxp_e_D[n] = quantize((fxp_input_signal[n] * fxp_sin_out[n-1]), e_d_width)
     else:
         fxp_e_D[n] = 0.0
 
     #loop filter
-    fxp_integrator_out += quantize(K_i * fxp_e_D[n], 39)
-    fxp_e_F[n] = quantize(K_p * fxp_e_D[n], 26) + fxp_integrator_out
+    fxp_integrator_out += quantize(K_i * fxp_e_D[n], ki_ed_width)
+    fxp_e_F[n] = quantize(K_p * fxp_e_D[n], kp_ed_width) + fxp_integrator_out
 
     #NCO
     if(n - 1 > 0):

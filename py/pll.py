@@ -19,7 +19,11 @@ cos_out = np.ones(100)
 trig_arg = np.zeros(100)
 
 for n in range(99):
-    input_signal[n] = np.cos(2*np.pi*(k/N)*n + np.pi)
+    if(n < 0):
+        input_signal[n] = 0.0
+    else:
+        input_signal[n] = 1.0
+    # input_signal[n] = np.cos(2*np.pi*(k/N)*n + np.pi)
 
 for n in range(99):
     if(n - 1 > 0):
@@ -49,6 +53,8 @@ fig = plt.figure()
 
 # Set up Axes
 ax1 = fig.add_subplot(211)
+ax1.axvline(x=00, color='red', ls='-.')
+ax1.axvline(x=0+30, color='red', ls='-.')
 ax1.plot(cos_out, label='PLL Output')
 plt.grid()
 ax1.plot(input_signal, label='Input Signal')
@@ -60,6 +66,8 @@ ax1.set_title('Waveforms')
 
 ax2 = fig.add_subplot(212)
 ax2.plot(e_F)
+ax2.axvline(x=00, color='red', ls='-.')
+ax2.axvline(x=0+30, color='red', ls='-.')
 plt.grid()
 ax2.set_title('Filtered Error')
 plt.tight_layout()

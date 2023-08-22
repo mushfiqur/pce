@@ -3,12 +3,13 @@ int main(){
 	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 	int tot_sim_steps = 10;
 
-	input_node x(&basis_poly, tot_sim_steps, "x");
+	input_node x(&basis_poly, "x");
 	mult_node x_c(&basis_poly, "x_c");
 	const_node c1(&basis_poly, "c1");
 	const_node c2(&basis_poly, "c2");
 	
-	delay_node out_d(&basis_poly, "y_d");
+	// delay_node out_d(&basis_poly, "y_d");
+	collate_node coll(&basis_poly, "coll");
 	mult_node out_dc(&basis_poly, "y_dc");
 	add_node out(&basis_poly, "out");
 
@@ -16,9 +17,13 @@ int main(){
 	c1.init(0.5);
 	c2.init(0.5);
 
+	x.add_dist(tot_sim_steps);
+
 	x_c.init(&c2, &x);
-	out_d.init(&out);
-	out_dc.init(&c1, &out_d);
+	// out_d.init(&out);
+	coll.init(&out);
+	out_dc.init(&c1, &coll);
+	// out_dc.init(&c1, &out_d);
 	out.init(&out_dc, &x_c);
 
 	// Generate Basis Polynomials
@@ -32,25 +37,26 @@ int main(){
 	sim.add_node(x_c);
 	sim.add_node(c1);
 	sim.add_node(c2);
-	sim.add_node(out_d);
+	// sim.add_node(out_d);
+	sim.add_node(coll);
 	sim.add_node(out_dc);
 	sim.add_node(out);
 
 	// // Set bitwidths
-	// sim.set_bitwidth(x, 32);
-	// sim.set_bitwidth(x_c, 32);
-	// sim.set_bitwidth(out_dc, 32);
+	sim.set_bitwidth(x, 32);
+	sim.set_bitwidth(x_c, 32);
+	sim.set_bitwidth(out_dc, 32);
 
 	sim.set_output_node(out);
 
 	// Run Sim
 	sim.set_sim_params(PCE, tot_sim_steps);
-	sim.run_sim(&x);
+	// sim.run_sim(&x);
 
-	// sim.run_sim_anneal(&x, 1.0/3.0, 50.0, 1000);
+	sim.run_sim_anneal(&x, 20.0 + 3.0, 10000);
 
-	out.print_pwr();	
-	// sim.print();
+	// out.print_pwr();	
+	sim.print();
 
 	// sim.add_plot_node(out);
 	// sim.plot();

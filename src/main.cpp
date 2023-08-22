@@ -65,17 +65,15 @@ int main(){
 
 	// Connect/Init Netlist
 	pll_in.add_signal(SINE, 1.0/15.0);
-	// pll_in.add_dist(1);
-
-	// double snr = 5.0;
-	// double pwr = 0.5 / std::pow(10.0, snr/10);
-	// double end = sqrt(3.0*pwr);
-
-	// pll_in.set_range(-1.0*end, 1.0*end);
+	
+	pll_in.add_dist(1);
+	double snr = 3.0;
+	double pwr = 0.5 / std::pow(10.0, snr/10);
+	double end = sqrt(3.0*pwr);
+	pll_in.set_range(-1.0*end, 1.0*end);
 
 	kp.init(0.2667);
 	ki.init(0.0178);
-	// k0.init(1.0);
 	trig_step.init(2.0*M_PI*(1.0/15.0));
 
 	e_d.init(&pll_in, &inverted_sine);
@@ -85,7 +83,6 @@ int main(){
 	accum_delay.init(&accum);
 	e_f.init(&kp_ed, &accum);
 
-	// k0_ef.init(&e_f, &k0);
 	phase_est.init(&e_f, &phase_est_delay);
 	trig_arg.init(&phase_est, &trig_step);
 	phase_est_delay.init(&trig_arg);
@@ -115,7 +112,6 @@ int main(){
 	sim.add_node(accum);
 	sim.add_node(accum_delay);
 	sim.add_node(e_f);
-	// sim.add_node(k0_ef);
 	sim.add_node(phase_est);
 	sim.add_node(phase_est_delay);
 	sim.add_node(trig_arg);
@@ -132,19 +128,18 @@ int main(){
 	sim.set_bitwidth(e_d,    64);
 	sim.set_bitwidth(kp_ed,  64);
 	sim.set_bitwidth(ki_ed,  64);
-	// sim.set_bitwidth(k0_ef,  32);
 	
 	// Run Sim
 	sim.set_sim_params(PCE, tot_sim_steps);
 	// sim.run_sim(&pll_in);
-	sim.run_sim_anneal(&pll_in, 200.0, 1000);
-
-	// sim.add_plot_node(pll_in);
-	// std::cout << cosine.get_pwr() << std::endl;
-	// sim.add_plot_node(cosine);
-	// sim.plot();
+	sim.run_sim_anneal(&pll_in, 20.0, 1000);
 
 	sim.print();
+
+	// sim.add_plot_node(pll_in);
+	sim.add_plot_node(cosine);
+
+	sim.plot();
 
 	return 0;
 }

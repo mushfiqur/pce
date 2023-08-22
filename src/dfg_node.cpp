@@ -429,7 +429,6 @@ noise_node::noise_node(BasisPolySet* bp_set, int node_id, std::string label) : d
 	this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
 };
 
-
 void noise_node::init(){
 
 }
@@ -442,11 +441,14 @@ void noise_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 		this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 		
 		for(int t = 0; t < this->pce_coeffs.size(); t++){
+		// for(int t = 0; t < 10; t++){
 			// TODO: line below uncommented represents a truncation quantizer
 			//         commenting it out makes it a rounding quantizer
 			//        Implement enum to differentiate
-			// this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
-			this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+			if(t % 2 == 0){
+				// this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+			}
 		}
 	}
 	else{
