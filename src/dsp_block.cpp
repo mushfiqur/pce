@@ -473,7 +473,6 @@ void cosine_node::get_pce_stats(std::vector<double>& mean_arr, std::vector<doubl
 
 }
 
-
 cosine_node::~cosine_node(){
 	for(int i = 0; i < this->constants.size(); i++){
 		delete this->constants[i];
@@ -518,9 +517,10 @@ void collate_node::process(int curr_timestamp){
 	double var = 0.0;
 
 	if(curr_timestamp - 1 >= 0){
+		mean = lhs->pce_coeffs[curr_timestamp - 1][0];
+
 		for(int i = 0; i < this->lhs->pce_coeffs[curr_timestamp - 1].size(); i++){
 			var  += lhs->pce_coeffs[curr_timestamp - 1][i] * lhs->pce_coeffs[curr_timestamp - 1][i] * this->bp_set_ptr->poly_sqr_expt[i];
-			mean += lhs->pce_coeffs[curr_timestamp - 1][i] * this->bp_set_ptr->poly_expt[i];
 		}
 
 		this->pce_coeffs[curr_timestamp][0] = mean;
@@ -531,4 +531,89 @@ void collate_node::process(int curr_timestamp){
 			this->pce_coeffs[curr_timestamp][i] = 0.0;
 		}
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+fir_node::fir_node(BasisPolySet* bp_set, std::string label) : dfg_node(FIR_BLOCK, bp_set, label){
+	var* v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
+	this->v = v;
+	this->bp_set_ptr->add_variable(v);
+
+	this->sum_coeffs = 0.0;
+	this->sum_sqr_coeffs = 0.0;
+}
+
+void fir_node::init(dfg_node* arg_node, std::string filename){
+	this->head->lhs = arg_node->tail;
+	this->head->rhs = nullptr;
+
+	arg_node->tail->add_next_node(this);
+
+	std::ifstream f_coeffs(filename, std::ios::in);
+	double num_read = 0.0;
+	
+	while(f_coeffs >> num_read){
+		this->filt_coeffs.push_back(num_read);
+
+		this->sum_coeffs += num_read;
+		this->sum_sqr_coeffs += (num_read * num_read);
+	}
+}
+
+void fir_node::init(dfg_node* arg_node, std::vector<double>& coeffs){
+	this->head->lhs = arg_node->tail;
+	this->head->rhs = nullptr;
+
+	arg_node->tail->add_next_node(this);
+
+	for(int i = 0; i < coeffs.size(); i++){
+		this->filt_coeffs.push_back(coeffs[i]);
+
+		this->sum_coeffs += coeffs[i];
+		this->sum_sqr_coeffs += (coeffs[i] * coeffs[i]);
+	}
+}
+
+void fir_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
+	this->sim_type = sim_type;
+	this->last_exec_time = -1;
+
+	this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+
+	
+	if(this->tail != this){
+		dfg_node* n = this->tail->rhs;	// noise node
+
+		this->tail->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+		n->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
+
+		for(int t = 0; t < n->pce_coeffs.size(); t++){
+			n->pce_coeffs[t][this->bp_set_ptr->get_var_idx(n->node_id)] = (this->filt_coeffs.size()) * std::pow(2.0, -1.0*this->bitwidth) / 2.0;		
+		}
+	}
+}
+
+void fir_node::set_bitwidth(int width){
+	dfg_node::set_bitwidth(width);
+}
+
+void fir_node::print(bool print_last){
+	this->tail->print(print_last);
+}
+
+void fir_node::process(int curr_timestamp){
+	this->last_exec_time = curr_timestamp;
+
+	double mean = this->lhs->pce_coeffs[curr_timestamp][0];
+	double var = 0.0;
+
+	for(int i = 0; i < this->lhs->pce_coeffs[curr_timestamp].size(); i++){
+		var  += lhs->pce_coeffs[curr_timestamp][i] * lhs->pce_coeffs[curr_timestamp][i] * this->bp_set_ptr->poly_sqr_expt[i];
+	}
+
+	this->pce_coeffs[curr_timestamp][0] = this->sum_coeffs * mean;
+	this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->v->id)] = std::sqrt(3.0 * (this->sum_sqr_coeffs * var));
+
+	// this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->v->id)] = std::sqrt((this->sum_sqr_coeffs * var) / this->bp_set_ptr->poly_sqr_expt[this->bp_set_ptr->get_var_idx(this->v->id)]);
 }

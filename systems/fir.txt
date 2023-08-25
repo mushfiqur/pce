@@ -1,0 +1,112 @@
+int main(){
+	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
+	int tot_sim_steps = 10;
+	
+	// Define Netlist
+	input_node fir_in(&basis_poly, "fir-in");
+	
+	const_node b0(&basis_poly, "b0");
+	const_node b1(&basis_poly, "b1");
+	const_node b2(&basis_poly, "b2");
+	const_node b3(&basis_poly, "b3");
+	const_node b4(&basis_poly, "b4");
+	
+	delay_node d0(&basis_poly, "d0");
+	delay_node d1(&basis_poly, "d1");
+	delay_node d2(&basis_poly, "d2");
+	delay_node d3(&basis_poly, "d3");
+
+	mult_node mult0(&basis_poly, "mult0");
+	mult_node mult1(&basis_poly, "mult1");
+	mult_node mult2(&basis_poly, "mult2");
+	mult_node mult3(&basis_poly, "mult3");
+	mult_node mult4(&basis_poly, "mult4");
+
+	add_node sum0(&basis_poly, "sum0");
+	add_node sum1(&basis_poly, "sum0");
+	add_node sum2(&basis_poly, "sum0");
+
+	add_node fir_out(&basis_poly, "fir-out");
+	
+	// Connect/Init Netlist
+	fir_in.add_dist(tot_sim_steps);
+	d0.init(&fir_in);
+	d1.init(&d0);
+	d2.init(&d1);
+	d3.init(&d2);
+
+	// b0.init(0.0284);
+	// b1.init(0.2370);
+	// b2.init(0.4692);
+	// b3.init(0.2370);
+	// b4.init(0.0284);
+
+	b0.init(0.7640);
+	b1.init(0.6218);
+	b2.init(0.2269);
+	b3.init(0.7705);
+	b4.init(0.8326);
+
+	mult0.init(&fir_in, &b0);
+	mult1.init(&d0, &b1);
+	mult2.init(&d1, &b2);
+	mult3.init(&d2, &b3);
+	mult4.init(&d3, &b4);
+
+	sum0.init(&mult0,   &mult1);
+	sum1.init(&sum0,    &mult2);
+	sum2.init(&sum1,    &mult3);
+	fir_out.init(&sum2, &mult4);
+	
+	// Generate Basis Polynomials
+	basis_poly.generate_polys(2);
+
+	//// Set up Simulator
+	Simulator sim = Simulator();
+	sim.add_basis_poly_set(basis_poly);
+
+	// Add nodes to simulator
+	sim.add_node(fir_in);
+	sim.add_node(b0);
+	sim.add_node(b1);
+	sim.add_node(b2);
+	sim.add_node(b3);
+	sim.add_node(b4);
+	sim.add_node(d0);
+	sim.add_node(d1);
+	sim.add_node(d2);
+	sim.add_node(d3);
+	sim.add_node(mult0);
+	sim.add_node(mult1);
+	sim.add_node(mult2);
+	sim.add_node(mult3);
+	sim.add_node(mult4);
+	sim.add_node(sum0);
+	sim.add_node(sum1);
+	sim.add_node(sum2);
+	sim.add_node(fir_out);
+
+	
+	sim.set_output_node(fir_out);
+	
+	// Set bitwidths
+	// sim.set_bitwidth(mult0, 4);
+	// sim.set_bitwidth(mult1, 4);
+	// sim.set_bitwidth(mult2, 4);
+	// sim.set_bitwidth(mult3, 4);
+	// sim.set_bitwidth(mult4, 4);
+	
+	// Run Sim
+	sim.set_sim_params(PCE, tot_sim_steps);
+	sim.run_sim(&fir_in);
+	// sim.run_sim_anneal(&fir_in, 20.0, 1000);
+
+	// sim.print();
+
+	// sim.add_plot_node(fir_in);
+	// sim.add_plot_node(fir_out);
+
+	// sim.plot();
+
+	return 0;
+}

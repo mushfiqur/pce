@@ -23,8 +23,10 @@ typedef enum
 	INPUT_NOISE,
 	DELAY,
 	CONST,
+	
 	SINE_BLOCK,
-	COSINE_BLOCK
+	COSINE_BLOCK,
+	FIR_BLOCK
 } NodeType;
 
 #endif

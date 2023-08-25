@@ -132,7 +132,7 @@ bool dfg_node::node_args_ready(int curr_timestamp){
 }
 
 void dfg_node::set_bitwidth(int width){
-	// this->bitwidth = width;
+	this->bitwidth = width;
 
 	if(this->tail == this){
 		int n_noise_id = this->bp_set_ptr->get_new_var_id();
