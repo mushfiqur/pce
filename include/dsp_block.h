@@ -14,8 +14,8 @@
 
 class sine_node : public dfg_node {
 	private:
-	std::vector<const_node*> constants;
-	std::vector<dfg_node*> nodes;
+	// std::vector<const_node*> constants;
+	// std::vector<dfg_node*> nodes;
 
 	public:
 	int a;
@@ -31,15 +31,10 @@ class sine_node : public dfg_node {
 	void remove_signal_component() override;
 
 	double get_pwr() override;
-
-	~sine_node();
 };
 
 class cosine_node : public dfg_node {
 	private:
-	std::vector<const_node*> constants;
-	std::vector<dfg_node*> nodes;
-
 	public:
 	int a;
 	cosine_node(BasisPolySet* bp_set, std::string label);
@@ -56,8 +51,6 @@ class cosine_node : public dfg_node {
 	double get_pwr() override;
 	void get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr) override;
 
-
-	~cosine_node();
 };
 
 class collate_node : public dfg_node {

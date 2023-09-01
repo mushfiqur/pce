@@ -30,7 +30,7 @@
 // valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main > log 2>&1
 int main(){
 	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
-	int tot_sim_steps = 150;
+	int tot_sim_steps = 250;
 	
 	////---------------------------------Define Netlist---------------------------------
 	input_node input_I(&basis_poly, "I_{input}");
@@ -89,7 +89,13 @@ int main(){
 	delay_node sine_delay(&basis_poly, "sine_delay");
 
 	// MIXER //
-	// mult_node rds_mixed(&basis_poly, "rds-mixed");
+	mult_node rds_mixed(&basis_poly, "rds-mixed");
+
+	// RDS BASEBAND FILTER //
+	fir_node rds_baseband_filt(&basis_poly, "rds-baseband-filt");
+
+	// RDS RRC FILTER //
+	fir_node rds_rrc_filt(&basis_poly, "rds-rrc-filt");
 
 	////---------------------------------Connect/Init Netlist---------------------------------
 	input_I.add_dist(3);
@@ -142,10 +148,13 @@ int main(){
 	inverted_sine.init(&sine_delay, &inverter);
 
 	// RDS MIXED //
-	// const_node c_debug(&basis_poly, "c-debug");
-	// c_debug.init(1.0);
-	// rds_mixed.init(&c_debug, &cosine);
-	// rds_mixed.init(&rds_channel_filter, &cosine);
+	rds_mixed.init(&rds_channel_filter, &cosine);
+
+	// RDS BASEBAND FILTER //
+	rds_baseband_filt.init(&rds_mixed, "/home/mushf/pce/filters/rds_baseband_filt.txt", 0.0);
+
+	// RDS RRC FILTER //
+	rds_rrc_filt.init(&rds_baseband_filt, "/home/mushf/pce/filters/rds_rrc_filt.txt", 0.0);
 
 	//// Generate Basis Polynomials
 	basis_poly.generate_polys(2);
@@ -193,11 +202,12 @@ int main(){
 	sim.add_node(inverter);
 	sim.add_node(inverted_sine);
 	sim.add_node(sine_delay);
-	// sim.add_node(rds_mixed);
-	// sim.add_node(c_debug);
+	sim.add_node(rds_mixed);
+	sim.add_node(rds_baseband_filt);
+	sim.add_node(rds_rrc_filt);
 	
 	// SET OUTPUT NODE
-	sim.set_output_node(cosine);
+	sim.set_output_node(rds_rrc_filt);
 	
 	//// Set bitwidths
 	// sim.set_bitwidth(rf_filter, 1);
@@ -209,7 +219,7 @@ int main(){
 	// cosine.print_pwr();
 	// rds_carrier_filter.print_pwr();
 	sim.add_plot_node(cosine);
-	// sim.add_plot_node(rds_mixed);
+	sim.add_plot_node(rds_rrc_filt);
 	sim.plot();
 
 

@@ -5,129 +5,75 @@ sine_node::sine_node(BasisPolySet* bp_set, std::string label) : dfg_node(SINE_BL
 }
 
 void sine_node::init(dfg_node* arg_node){
-	arg_node->tail->add_next_node(this);
-	/////
-
-	const_node* center = new const_node(this->bp_set_ptr, "center");
-	
-	const_node* top_const = new const_node(this->bp_set_ptr, "top-const");
-	const_node* mid_const = new const_node(this->bp_set_ptr, "mid-const");
-	const_node* bot_const = new const_node(this->bp_set_ptr, "bot-const");
-
-	const_node* end_const = new const_node(this->bp_set_ptr, "end-const");
-
-	sub_node* d = new sub_node(this->bp_set_ptr, "sin_{in}");
-	mult_node* top_a = new mult_node(this->bp_set_ptr, "top_a");
-	mult_node* top_b = new mult_node(this->bp_set_ptr, "top_b");
-	mult_node* top_c = new mult_node(this->bp_set_ptr, "top_c");
-	mult_node* mid_a = new mult_node(this->bp_set_ptr, "mid_a");
-	mult_node* bot_a = new mult_node(this->bp_set_ptr, "bot_a");
-	add_node* add_a = new add_node(this->bp_set_ptr, "add_a");
-	add_node* add_b = new add_node(this->bp_set_ptr, "add_b");
-	add_node* out = new add_node(this->bp_set_ptr, "sin(" + arg_node->label + ")");
-	
-	this->tail = out;
-
-	for(int i = 0; i < this->next_nodes.size(); i++){
-		this->tail->add_next_node(this->next_nodes[i]);
-
-		if(this->next_nodes[i]->lhs == this){
-			this->next_nodes[i]->lhs = this->tail;
-		}
-
-		if(this->next_nodes[i]->rhs == this){
-			this->next_nodes[i]->rhs = this->tail;
-		}
-
-		for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
-			if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
-				this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
-			}
-		}
-	}
-	this->next_nodes.clear();
-	
-	this->head = d;
 	this->head->lhs = arg_node->tail;
 	this->head->rhs = nullptr;
 
-
-	d->init(arg_node->tail, center);
-
-	for(int i = 0; i < arg_node->tail->next_nodes.size(); i++){
-		if(arg_node->tail->next_nodes[i]->label == d->label){
-			arg_node->tail->next_nodes.erase(arg_node->tail->next_nodes.begin() + i);
-			break;
-		}
-	}
-
-	top_a->init(d, d);
-
-	top_b->init(top_a, d);
-
-	top_c->init(top_b, top_const);
-
-	mid_a->init(top_a, mid_const);
-
-	bot_a->init(d, bot_const);
-
-	add_a->init(top_c, mid_a);
-
-	add_b->init(add_a, bot_a);
-
-	out->init(add_b, end_const);
-
-	///// Push in the order of execution
-	constants.push_back(center);
-	constants.push_back(top_const);
-	constants.push_back(mid_const);
-	constants.push_back(bot_const);
-	constants.push_back(end_const);
-
-	nodes.push_back(d);
-	nodes.push_back(top_a);
-	nodes.push_back(top_b);
-	nodes.push_back(top_c);
-	nodes.push_back(mid_a);
-	nodes.push_back(bot_a);
-	nodes.push_back(add_a);
-	nodes.push_back(add_b);
-	nodes.push_back(out);
-	
-
+	arg_node->tail->add_next_node(this);
 }
 
 void sine_node::process(int curr_timestamp){
 	this->last_exec_time = curr_timestamp;
 
-	double center = this->head->lhs->pce_coeffs[curr_timestamp][0];
+	// d = arg_node - mean(arg_node)
+	std::vector<double> d = this->head->lhs->pce_coeffs[curr_timestamp];
+	double center = d[0];
+	d[0] = 0.0;
 
-	this->constants[0]->pce_coeffs[curr_timestamp][0] = center;	// Set center
-	this->constants[1]->pce_coeffs[curr_timestamp][0] = (-1.0/6.0)*std::cos(center);		// Set top_const
-	this->constants[2]->pce_coeffs[curr_timestamp][0] = (-1.0/2.0)*std::sin(center);		// Set mid_const
-	this->constants[3]->pce_coeffs[curr_timestamp][0] = std::cos(center);		// Set bot_const
-	this->constants[4]->pce_coeffs[curr_timestamp][0] = std::sin(center);		// Set end_const
-
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->process(curr_timestamp);
+	// Top_a = d*d
+	std::vector<double> top_a = std::vector<double>(d.size(), 0.0);
+	for(int k = 0; k < top_a.size(); k++){
+		for(int i = 0; i < d.size(); i++){
+			for(int j = 0; j < d.size(); j++){
+				top_a[k] += d[i] * d[j] * this->bp_set_ptr->expt_table[i][j][k];
+			}
+		}
+		top_a[k] /= this->bp_set_ptr->poly_sqr_expt[k];
 	}
 
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->process(curr_timestamp);
+	// Top_b = top_a*d
+	std::vector<double> top_b = std::vector<double>(d.size(), 0.0);
+	for(int k = 0; k < top_b.size(); k++){
+		for(int i = 0; i < top_a.size(); i++){
+			for(int j = 0; j < d.size(); j++){
+				top_b[k] += top_a[i] * d[j] * this->bp_set_ptr->expt_table[i][j][k];
+			}
+		}
+		top_b[k] /= this->bp_set_ptr->poly_sqr_expt[k];
 	}
+	
+	// Top_b = top_b * top_const
+	double top_const = (-1.0/6.0)*std::cos(center);
+	for(int i = 0; i < top_b.size(); i++){
+		top_b[i] = top_b[i] * top_const;
+	}
+
+	// Mid_a = top_a * mid_const
+	std::vector<double> mid_a = std::vector<double>(d.size(), 0.0);
+	double mid_const = (-1.0/2.0)*std::sin(center);
+	for(int i = 0; i < mid_a.size(); i++){
+		mid_a[i] = top_a[i] * mid_const;
+	}
+
+	// Bot_a = d * bot_const
+	double bot_const = std::cos(center);
+	std::vector<double> bot_a = std::vector<double>(d.size(), 0.0);
+	for(int i = 0; i < bot_a.size(); i++){
+		bot_a[i] = d[i] * bot_const;
+	}
+
+	// out = end_const + sum(top_b, mid_a, bot_a)
+	double end_const = std::sin(center);
+	for(int i = 0; i < this->pce_coeffs[curr_timestamp].size(); i++){
+		this->pce_coeffs[curr_timestamp][i] = (top_b[i] + mid_a[i] + bot_a[i]);
+	}
+	this->pce_coeffs[curr_timestamp][0] += end_const;
 }
 
 void sine_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
 	this->last_exec_time = -1;
 	this->sim_type = sim_type;
-	
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
-	}
 
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
-	}
+	this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 }
 
 void sine_node::print(bool print_last){
@@ -140,34 +86,15 @@ void sine_node::set_bitwidth(int width){
 }
 
 void sine_node::reorder_signal_polys(){
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->reorder_signal_polys();
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->reorder_signal_polys();
-	}
+	dfg_node::reorder_signal_polys();
 }
 
 void sine_node::save_signal_polys(){
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->save_signal_polys();
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->save_signal_polys();
-	}	
-
-	return;
+	dfg_node::save_signal_polys();
 }
 
 void sine_node::remove_signal_component(){
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->remove_signal_component();
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->remove_signal_component();
-	}	
-
-	return;
+	dfg_node::remove_signal_component();
 }
 
 double sine_node::get_pwr(){
@@ -212,15 +139,6 @@ double sine_node::get_pwr(){
 	// return out[out.size() - 1];
 }
 
-sine_node::~sine_node(){
-	for(int i = 0; i < this->constants.size(); i++){
-		delete this->constants[i];
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		delete this->nodes[i];
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////////////////
 
 cosine_node::cosine_node(BasisPolySet* bp_set, std::string label) : dfg_node(COSINE_BLOCK, bp_set, label) { 
@@ -228,129 +146,76 @@ cosine_node::cosine_node(BasisPolySet* bp_set, std::string label) : dfg_node(COS
 }
 
 void cosine_node::init(dfg_node* arg_node){
-	arg_node->tail->add_next_node(this);
-	/////
-
-	const_node* center = new const_node(this->bp_set_ptr, "center");
-	
-	const_node* top_const = new const_node(this->bp_set_ptr, "top-const");
-	const_node* mid_const = new const_node(this->bp_set_ptr, "mid-const");
-	const_node* bot_const = new const_node(this->bp_set_ptr, "bot-const");
-
-	const_node* end_const = new const_node(this->bp_set_ptr, "end-const");
-
-	sub_node* d = new sub_node(this->bp_set_ptr, "cos_{in}");
-	mult_node* top_a = new mult_node(this->bp_set_ptr, "top_a");
-	mult_node* top_b = new mult_node(this->bp_set_ptr, "top_b");
-	mult_node* top_c = new mult_node(this->bp_set_ptr, "top_c");
-	mult_node* mid_a = new mult_node(this->bp_set_ptr, "mid_a");
-	mult_node* bot_a = new mult_node(this->bp_set_ptr, "bot_a");
-	add_node* add_a = new add_node(this->bp_set_ptr, "add_a");
-	add_node* add_b = new add_node(this->bp_set_ptr, "add_b");
-	add_node* out = new add_node(this->bp_set_ptr, "cos(" + arg_node->label + ")");
-	
-	this->tail = out;
-
-	for(int i = 0; i < this->next_nodes.size(); i++){
-		this->tail->add_next_node(this->next_nodes[i]);
-
-		if(this->next_nodes[i]->lhs == this){
-			this->next_nodes[i]->lhs = this->tail;
-		}
-
-		if(this->next_nodes[i]->rhs == this){
-			this->next_nodes[i]->rhs = this->tail;
-		}
-
-		for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
-			if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
-				this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
-			}
-		}
-	}
-	this->next_nodes.clear();
-	
-	this->head = d;
 	this->head->lhs = arg_node->tail;
 	this->head->rhs = nullptr;
 
-
-	d->init(arg_node->tail, center);
-
-	for(int i = 0; i < arg_node->tail->next_nodes.size(); i++){
-		if(arg_node->tail->next_nodes[i]->label == d->label){
-			arg_node->tail->next_nodes.erase(arg_node->tail->next_nodes.begin() + i);
-			break;
-		}
-	}
-
-	top_a->init(d, d);
-
-	top_b->init(top_a, d);
-
-	top_c->init(top_b, top_const);
-
-	mid_a->init(top_a, mid_const);
-
-	bot_a->init(d, bot_const);
-
-	add_a->init(top_c, mid_a);
-
-	add_b->init(add_a, bot_a);
-
-	out->init(add_b, end_const);
-
-	///// Push in the order of execution
-	constants.push_back(center);
-	constants.push_back(top_const);
-	constants.push_back(mid_const);
-	constants.push_back(bot_const);
-	constants.push_back(end_const);
-
-	nodes.push_back(d);
-	nodes.push_back(top_a);
-	nodes.push_back(top_b);
-	nodes.push_back(top_c);
-	nodes.push_back(mid_a);
-	nodes.push_back(bot_a);
-	nodes.push_back(add_a);
-	nodes.push_back(add_b);
-	nodes.push_back(out);
-	
-
+	arg_node->tail->add_next_node(this);
 }
 
 void cosine_node::process(int curr_timestamp){
+	
 	this->last_exec_time = curr_timestamp;
 
-	double center = this->head->lhs->pce_coeffs[curr_timestamp][0];
+	// d = arg_node - mean(arg_node)
+	std::vector<double> d = this->head->lhs->pce_coeffs[curr_timestamp];
+	double center = d[0];
+	d[0] = 0.0;
 
-	this->constants[0]->pce_coeffs[curr_timestamp][0] = center;	// Set center
-	this->constants[1]->pce_coeffs[curr_timestamp][0] = (1.0/6.0)*std::sin(center);		// Set top_const
-	this->constants[2]->pce_coeffs[curr_timestamp][0] = (1.0/2.0)*std::cos(center);		// Set mid_const
-	this->constants[3]->pce_coeffs[curr_timestamp][0] = -1.0*std::sin(center);		// Set bot_const
-	this->constants[4]->pce_coeffs[curr_timestamp][0] = std::cos(center);		// Set end_const
-
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->process(curr_timestamp);
+	// Top_a = d*d
+	std::vector<double> top_a = std::vector<double>(d.size(), 0.0);
+	for(int k = 0; k < top_a.size(); k++){
+		for(int i = 0; i < d.size(); i++){
+			for(int j = 0; j < d.size(); j++){
+				top_a[k] += d[i] * d[j] * this->bp_set_ptr->expt_table[i][j][k];
+			}
+		}
+		top_a[k] /= this->bp_set_ptr->poly_sqr_expt[k];
 	}
 
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->process(curr_timestamp);
+	// Top_b = top_a*d
+	std::vector<double> top_b = std::vector<double>(d.size(), 0.0);
+	for(int k = 0; k < top_b.size(); k++){
+		for(int i = 0; i < top_a.size(); i++){
+			for(int j = 0; j < d.size(); j++){
+				top_b[k] += top_a[i] * d[j] * this->bp_set_ptr->expt_table[i][j][k];
+			}
+		}
+		top_b[k] /= this->bp_set_ptr->poly_sqr_expt[k];
 	}
+	
+	// Top_b = top_b * top_const
+	double top_const = (1.0/6.0)*std::sin(center);
+	for(int i = 0; i < top_b.size(); i++){
+		top_b[i] = top_b[i] * top_const;
+	}
+
+	// Mid_a = top_a * mid_const
+	std::vector<double> mid_a = std::vector<double>(d.size(), 0.0);
+	double mid_const = (-1.0/2.0)*std::cos(center);
+	for(int i = 0; i < mid_a.size(); i++){
+		mid_a[i] = top_a[i] * mid_const;
+	}
+
+	// Bot_a = d * bot_const
+	double bot_const = -1.0*std::sin(center);
+	std::vector<double> bot_a = std::vector<double>(d.size(), 0.0);
+	for(int i = 0; i < bot_a.size(); i++){
+		bot_a[i] = d[i] * bot_const;
+	}
+
+	// out = end_const + sum(top_b, mid_a, bot_a)
+	double end_const = std::cos(center);
+	for(int i = 0; i < this->pce_coeffs[curr_timestamp].size(); i++){
+		this->pce_coeffs[curr_timestamp][i] = (top_b[i] + mid_a[i] + bot_a[i]);
+	}
+	this->pce_coeffs[curr_timestamp][0] += end_const;
 }
 
 void cosine_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type){
 	this->last_exec_time = -1;
 	this->sim_type = sim_type;
-	
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
-	}
 
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->set_sim_params(tot_sim_steps, mc_samples, basis_set_size, sim_type);
-	}
+	this->pce_coeffs = std::vector<std::vector<double>>(tot_sim_steps, std::vector<double>(basis_set_size, 0.0));
 }
 
 void cosine_node::print(bool print_last){
@@ -363,34 +228,15 @@ void cosine_node::set_bitwidth(int width){
 }
 
 void cosine_node::reorder_signal_polys(){
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->reorder_signal_polys();
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->reorder_signal_polys();
-	}
+	dfg_node::reorder_signal_polys();
 }
 
 void cosine_node::save_signal_polys(){
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->save_signal_polys();
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->save_signal_polys();
-	}	
-
-	return;
+	dfg_node::save_signal_polys();
 }
 
 void cosine_node::remove_signal_component(){
-	for(int i = 0; i < this->constants.size(); i++){
-		this->constants[i]->remove_signal_component();
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		this->nodes[i]->remove_signal_component();
-	}	
-
-	return;
+	dfg_node::remove_signal_component();
 }
 
 double cosine_node::get_pwr(){
@@ -471,15 +317,6 @@ void cosine_node::get_pce_stats(std::vector<double>& mean_arr, std::vector<doubl
 		}
 	}
 
-}
-
-cosine_node::~cosine_node(){
-	for(int i = 0; i < this->constants.size(); i++){
-		delete this->constants[i];
-	}
-	for(int i = 0; i < this->nodes.size(); i++){
-		delete this->nodes[i];
-	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////

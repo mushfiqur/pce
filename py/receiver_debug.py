@@ -115,7 +115,7 @@ for n in range(iters):
     sin_out[n] = -np.sin(trig_arg[n])
     cos_out[n] = np.cos(trig_arg[n])
 
-print("cos_out pwr: {0}".format(np.mean(np.square(cos_out))))
+# print("cos_out pwr: {0}".format(np.mean(np.square(cos_out))))
 
 
 # arr = np.zeros(iters)
@@ -141,4 +141,12 @@ rds_rrc_filter = np.loadtxt("/home/mushf/pce/filters/rds_rrc_filt.txt")
 
 for i in range(iters):
     rds_rrc[i] = signal.lfilter(rds_rrc_filter, 1.0, rds_baseband[i])
+
+arr = np.zeros(iters)
+for i in range(iters):
+    arr[i] = np.mean(np.square(rds_rrc[i]))
+
+print(arr[len(arr) - 1])
+plt.plot(arr)
+plt.show()
 
