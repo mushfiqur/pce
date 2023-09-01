@@ -103,7 +103,7 @@ void sine_node::process(int curr_timestamp){
 	double center = this->head->lhs->pce_coeffs[curr_timestamp][0];
 
 	this->constants[0]->pce_coeffs[curr_timestamp][0] = center;	// Set center
-	this->constants[1]->pce_coeffs[curr_timestamp][0] = (1.0/6.0)*std::cos(center);		// Set top_const
+	this->constants[1]->pce_coeffs[curr_timestamp][0] = (-1.0/6.0)*std::cos(center);		// Set top_const
 	this->constants[2]->pce_coeffs[curr_timestamp][0] = (-1.0/2.0)*std::sin(center);		// Set mid_const
 	this->constants[3]->pce_coeffs[curr_timestamp][0] = std::cos(center);		// Set bot_const
 	this->constants[4]->pce_coeffs[curr_timestamp][0] = std::sin(center);		// Set end_const

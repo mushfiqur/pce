@@ -30,7 +30,7 @@
 // valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./main > log 2>&1
 int main(){
 	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
-	int tot_sim_steps = 2;
+	int tot_sim_steps = 150;
 	
 	////---------------------------------Define Netlist---------------------------------
 	input_node input_I(&basis_poly, "I_{input}");
@@ -89,7 +89,7 @@ int main(){
 	delay_node sine_delay(&basis_poly, "sine_delay");
 
 	// MIXER //
-	mult_node rds_mixed(&basis_poly, "rds-mixed");
+	// mult_node rds_mixed(&basis_poly, "rds-mixed");
 
 	////---------------------------------Connect/Init Netlist---------------------------------
 	input_I.add_dist(3);
@@ -145,7 +145,7 @@ int main(){
 	// const_node c_debug(&basis_poly, "c-debug");
 	// c_debug.init(1.0);
 	// rds_mixed.init(&c_debug, &cosine);
-	rds_mixed.init(&rds_channel_filter, &cosine);
+	// rds_mixed.init(&rds_channel_filter, &cosine);
 
 	//// Generate Basis Polynomials
 	basis_poly.generate_polys(2);
@@ -193,7 +193,7 @@ int main(){
 	sim.add_node(inverter);
 	sim.add_node(inverted_sine);
 	sim.add_node(sine_delay);
-	sim.add_node(rds_mixed);
+	// sim.add_node(rds_mixed);
 	// sim.add_node(c_debug);
 	
 	// SET OUTPUT NODE
@@ -209,7 +209,7 @@ int main(){
 	// cosine.print_pwr();
 	// rds_carrier_filter.print_pwr();
 	sim.add_plot_node(cosine);
-	sim.add_plot_node(rds_mixed);
+	// sim.add_plot_node(rds_mixed);
 	sim.plot();
 
 
