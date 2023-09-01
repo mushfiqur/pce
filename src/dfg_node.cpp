@@ -340,12 +340,14 @@ void input_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 
 			if(this->cfg.has_dist){
 				this->pce_coeffs[t][0] += (unfm_dist_param_a + unfm_dist_param_b) / 2.0;
-				if(t < this->vars.size()){
-					this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[t]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
-				}
-				else{
-					this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[ this->vars.size() - 1 ]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
-				}
+				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[t % this->vars.size()]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+
+				// if(t < this->vars.size()){
+				// 	this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[t]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+				// }
+				// else{
+				// 	this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[ this->vars.size() - 1 ]->id)] = (unfm_dist_param_b - unfm_dist_param_a) / 2.0;
+				// }
 			}
 
 

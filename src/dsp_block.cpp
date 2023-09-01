@@ -536,15 +536,15 @@ void collate_node::process(int curr_timestamp){
 ////////////////////////////////////////////////////////////////////////////////////
 
 fir_node::fir_node(BasisPolySet* bp_set, std::string label) : dfg_node(FIR_BLOCK, bp_set, label){
-	var* v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
-	this->v = v;
-	this->bp_set_ptr->add_variable(v);
+	// var* v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
+	// this->v = v;
+	// this->bp_set_ptr->add_variable(v);
 
 	this->sum_coeffs = 0.0;
 	this->sum_sqr_coeffs = 0.0;
 }
 
-void fir_node::init(dfg_node* arg_node, std::string filename){
+void fir_node::init(dfg_node* arg_node, std::string filename, int correlation_dist){
 	this->head->lhs = arg_node->tail;
 	this->head->rhs = nullptr;
 
@@ -555,9 +555,19 @@ void fir_node::init(dfg_node* arg_node, std::string filename){
 	
 	while(f_coeffs >> num_read){
 		this->filt_coeffs.push_back(num_read);
-
 		this->sum_coeffs += num_read;
-		this->sum_sqr_coeffs += (num_read * num_read);
+	}
+	
+	for(int i = 0; i < filt_coeffs.size(); i++){
+		for(int j = 0; j < filt_coeffs.size(); j++){
+			if(std::abs(i - j) <= correlation_dist){
+				this->sum_sqr_coeffs += std::abs(filt_coeffs[i] * filt_coeffs[j]);
+			}
+			// else{
+			// 	this->sum_sqr_coeffs += correlation * filt_coeffs[i] * filt_coeffs[j];
+			// }
+			
+		}
 	}
 }
 
@@ -567,11 +577,18 @@ void fir_node::init(dfg_node* arg_node, std::vector<double>& coeffs){
 
 	arg_node->tail->add_next_node(this);
 
-	for(int i = 0; i < coeffs.size(); i++){
-		this->filt_coeffs.push_back(coeffs[i]);
+	// for(int i = 0; i < coeffs.size(); i++){
+	// 	this->filt_coeffs.push_back(coeffs[i]);
 
-		this->sum_coeffs += coeffs[i];
-		this->sum_sqr_coeffs += (coeffs[i] * coeffs[i]);
+	// 	this->sum_coeffs += coeffs[i];
+	// 	this->sum_sqr_coeffs += (coeffs[i] * coeffs[i]);
+	// }
+
+	for(int i = 0; i < coeffs.size(); i++){
+
+		for(int j = 0; j < coeffs.size(); j++){
+			this->sum_sqr_coeffs += coeffs[i] * coeffs[j];
+		}
 	}
 }
 
@@ -602,18 +619,41 @@ void fir_node::print(bool print_last){
 	this->tail->print(print_last);
 }
 
+void fir_node::add_dist(int num_rand_vars){
+	var* v;
+	for(int i = 0; i < num_rand_vars; i++){
+		v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
+		this->bp_set_ptr->add_variable(v);
+		this->vars.push_back(v);
+	}
+	
+}
+
 void fir_node::process(int curr_timestamp){
 	this->last_exec_time = curr_timestamp;
 
 	double mean = this->lhs->pce_coeffs[curr_timestamp][0];
-	double var = 0.0;
-
-	for(int i = 0; i < this->lhs->pce_coeffs[curr_timestamp].size(); i++){
-		var  += lhs->pce_coeffs[curr_timestamp][i] * lhs->pce_coeffs[curr_timestamp][i] * this->bp_set_ptr->poly_sqr_expt[i];
+	this->pce_coeffs[curr_timestamp][0] = this->sum_coeffs * mean;
+	
+	for(int i = 1; i < this->lhs->pce_coeffs[curr_timestamp].size(); i++){
+		this->pce_coeffs[curr_timestamp][i] = this->lhs->pce_coeffs[curr_timestamp][i] * std::sqrt(this->sum_sqr_coeffs);
 	}
 
-	this->pce_coeffs[curr_timestamp][0] = this->sum_coeffs * mean;
-	this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->v->id)] = std::sqrt(3.0 * (this->sum_sqr_coeffs * var));
+	return;
+
+	////////////
+	// double mean = this->lhs->pce_coeffs[curr_timestamp][0];
+	// double var = 0.0;
+
+	// for(int i = 0; i < this->lhs->pce_coeffs[curr_timestamp].size(); i++){
+	// 	var  += lhs->pce_coeffs[curr_timestamp][i] * lhs->pce_coeffs[curr_timestamp][i] * this->bp_set_ptr->poly_sqr_expt[i];
+	// }
+
+	// this->pce_coeffs[curr_timestamp][0] = this->sum_coeffs * mean;
+
+	// this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->vars[curr_timestamp % this->vars.size()]->id)] = std::sqrt(3.0 * (this->sum_sqr_coeffs * var));
+
+	// this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->v->id)] = std::sqrt(3.0 * (this->sum_sqr_coeffs * var));
 
 	// this->pce_coeffs[curr_timestamp][this->bp_set_ptr->get_var_idx(this->v->id)] = std::sqrt((this->sum_sqr_coeffs * var) / this->bp_set_ptr->poly_sqr_expt[this->bp_set_ptr->get_var_idx(this->v->id)]);
 }

@@ -108,6 +108,8 @@ void Simulator::initialize(dfg_node* n){
 
 	// Save power
 	this->curr_sol_noise_pwr = this->output_node->get_pwr();
+	
+	std::cout << std::endl;
 }
 
 double Simulator::try_solution(std::vector<bitwidth_config>& proposed_sol){
@@ -271,6 +273,8 @@ void Simulator::run_sim(dfg_node* n){
 		// Save power
 		this->curr_sol_noise_pwr = this->output_node->get_pwr();
 	}
+
+	std::cout << std::endl;
 }
 
 std::vector<bitwidth_config> Simulator::get_neighbour(){
@@ -312,7 +316,7 @@ void Simulator::propagate_coeffs(){
 			curr_node = q.front();
 
 			if(curr_node->t == CONST || curr_node->t == DELAY || curr_node->t == INPUT_SIGNAL || curr_node->t == INPUT_NOISE || curr_node->node_args_ready(curr_timestamp)){
-				// std::cout << "[" << curr_timestamp << "] Processing " << curr_node->label << std::endl;
+				std::cout << "[" << curr_timestamp << "] Processing " << curr_node->label << std::endl;
 				curr_node->process(curr_timestamp);
 				q.pop_front();
 				for(int i = 0; i < curr_node->next_nodes.size(); i++){
@@ -344,7 +348,7 @@ void Simulator::propagate_coeffs(){
 			}
 		}
 
-		// std::cout << "---------" << std::endl;
+		std::cout << "---------" << std::endl;
 	}
 
 	// std::clog << "DONE" << std::endl;

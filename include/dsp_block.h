@@ -74,19 +74,22 @@ class collate_node : public dfg_node {
 
 class fir_node : public dfg_node {
 	private:
-	var* v;
+	// var* v;
+	std::vector<var*> vars;
 	std::vector<double> filt_coeffs;
 	double sum_coeffs;
 	double sum_sqr_coeffs;
 	
 	public:
 	fir_node(BasisPolySet* bp_set, std::string label);
-	void init(dfg_node* arg_node, std::string filename);
+	void init(dfg_node* arg_node, std::string filename, int correlation_dist);
 	void init(dfg_node* arg_node, std::vector<double>& coeffs);
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
 	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
 	void print(bool print_last=false);
+
+	void add_dist(int num_rand_vars);
 
 	// void reorder_signal_polys() override;
 	// void save_signal_polys() override;
