@@ -414,12 +414,9 @@ void fir_node::init(dfg_node* arg_node, std::vector<double>& coeffs){
 
 	arg_node->tail->add_next_node(this);
 
-	// for(int i = 0; i < coeffs.size(); i++){
-	// 	this->filt_coeffs.push_back(coeffs[i]);
-
-	// 	this->sum_coeffs += coeffs[i];
-	// 	this->sum_sqr_coeffs += (coeffs[i] * coeffs[i]);
-	// }
+	for(int i = 0; i < coeffs.size(); i++){
+		this->filt_coeffs.push_back(coeffs[i]);
+	}
 
 	for(int i = 0; i < coeffs.size(); i++){
 
@@ -469,14 +466,31 @@ void fir_node::add_dist(int num_rand_vars){
 void fir_node::process(int curr_timestamp){
 	this->last_exec_time = curr_timestamp;
 
-	double mean = this->lhs->pce_coeffs[curr_timestamp][0];
-	this->pce_coeffs[curr_timestamp][0] = this->sum_coeffs * mean;
-	
-	for(int i = 1; i < this->lhs->pce_coeffs[curr_timestamp].size(); i++){
-		this->pce_coeffs[curr_timestamp][i] = this->lhs->pce_coeffs[curr_timestamp][i] * std::sqrt(this->sum_sqr_coeffs);
+	std::vector<double> temp_vec(this->pce_coeffs[curr_timestamp].size(), 0.0);
+
+	for(int k = 0; k < this->filt_coeffs.size(); k++){
+		if(curr_timestamp - k >= 0){
+			for(int i = 0; i < this->lhs->pce_coeffs[curr_timestamp-k].size(); i++){
+				temp_vec[i] = this->filt_coeffs[k] * this->lhs->pce_coeffs[curr_timestamp-k][i];
+			}
+
+			for(int i = 0; i < this->pce_coeffs[curr_timestamp].size(); i++){
+				this->pce_coeffs[curr_timestamp][i] += temp_vec[i];
+			}
+			// this->pce_coeffs[curr_timestamp] = sum( temp_vec, this->pce_coeffs[curr_timestamp] );
+		}
 	}
 
 	return;
+
+	// double mean = this->lhs->pce_coeffs[curr_timestamp][0];
+	// this->pce_coeffs[curr_timestamp][0] = this->sum_coeffs * mean;
+	
+	// for(int i = 1; i < this->lhs->pce_coeffs[curr_timestamp].size(); i++){
+	// 	this->pce_coeffs[curr_timestamp][i] = this->lhs->pce_coeffs[curr_timestamp][i] * std::sqrt(this->sum_sqr_coeffs);
+	// }
+
+	// return;
 
 	////////////
 	// double mean = this->lhs->pce_coeffs[curr_timestamp][0];

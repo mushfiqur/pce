@@ -193,7 +193,7 @@ double dfg_node::get_pwr(){
 	return pwr;
 }
 
-void dfg_node::print_pwr(){
+void dfg_node::print_pwr(bool only_last){
 	double pwr;
 
 	for(int t = 0; t < this->pce_coeffs.size(); t++){
@@ -201,7 +201,13 @@ void dfg_node::print_pwr(){
 		for(int i = 0; i < this->pce_coeffs[t].size(); i++){
 			pwr += this->pce_coeffs[t][i] * this->pce_coeffs[t][i] * this->bp_set_ptr->poly_sqr_expt[i];
 		}
-		std::cerr << "[" << this->label.c_str() << " @ " << t << "] " << pwr << std::endl;
+		if(!only_last){
+			std::cerr << "[" << this->label.c_str() << " @ " << t << "] " << pwr << std::endl;
+		}
+	}
+
+	if(only_last){
+		std::cerr << "[" << this->label.c_str() << " @ " << this->pce_coeffs.size() - 1 << "] " << pwr << std::endl;
 	}
 
 }

@@ -59,7 +59,7 @@ class dfg_node{
 	void print(bool print_last=false);
 	void print_signal_coeffs();
 	bool node_args_ready(int curr_timestamp);
-	void print_pwr();
+	void print_pwr(bool only_last=false);
 	virtual double get_pwr();
 	void get_mc_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr);
 	virtual void get_pce_stats(std::vector<double>& mean_arr, std::vector<double>& var_arr);

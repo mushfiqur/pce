@@ -5,3 +5,5 @@ build/
 data/
 filters/
 ref_cpp
+*.png
+*.bin

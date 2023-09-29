@@ -132,7 +132,8 @@ double Simulator::try_solution(std::vector<bitwidth_config>& proposed_sol){
 }
 
 void Simulator::print(){
-	std::cout << "Solution: \n(" <<  10.0*std::log10( this->output_sig_pwr / this->curr_sol_noise_pwr ) << " dB) { \n";
+	// std::cout << "Solution: \n(" <<  10.0*std::log10( this->output_sig_pwr / this->curr_sol_noise_pwr ) << " dB) { \n";
+	std::cout << "Solution: \n(" << this->curr_sol_noise_pwr << ") { \n";
 	for(int i = 0; i < this->curr_solution.size() - 1; i++){
 		std::cout << "\t" << this->curr_solution[i].n->label << ": " << this->curr_solution[i].bitwidth << ", \n";
 	}
@@ -297,7 +298,7 @@ std::vector<bitwidth_config> Simulator::get_neighbour(){
 }
 
 void Simulator::propagate_coeffs(){
-	// std::clog << "Propagating coefficients.... ";
+	std::clog << "Propagating coefficients.... \n";
 	std::deque<dfg_node*> q;
 
 	// std::clog << "    " << "t = ";
@@ -308,7 +309,7 @@ void Simulator::propagate_coeffs(){
 		// if((curr_timestamp + 1) % 10 == 0){
 		// 	std::clog << std::endl << "    " << "\t";
 		// }
-		
+		disp_progress_bar(curr_timestamp, this->tot_sim_steps);
 		q.push_back(this->head);
 		
 		dfg_node* curr_node;
@@ -351,7 +352,7 @@ void Simulator::propagate_coeffs(){
 		// std::cout << "---------" << std::endl;
 	}
 
-	// std::clog << "DONE" << std::endl;
+	std::clog << "DONE" << std::endl;
 	// std::clog << std::endl;
 
 }
