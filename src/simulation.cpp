@@ -81,7 +81,7 @@ void Simulator::initialize(dfg_node* n){
 	// this->output_sig_pwr /= this->output_node->pce_coeffs.size();;
 
 	this->output_sig_pwr = this->output_node->get_pwr();
-	std::cout << "Output power is: " << this->output_sig_pwr << std::endl;
+	std::clog << "Output power is: " << this->output_sig_pwr << std::endl;
 	// this->output_sig_pwr = 0.5;
 
 	// Set bitwidths
@@ -107,9 +107,16 @@ void Simulator::initialize(dfg_node* n){
 	}
 
 	// Save power
-	this->curr_sol_noise_pwr = this->output_node->get_pwr();
-	
-	std::cout << std::endl;
+	// this->curr_sol_noise_pwr = this->output_node->get_pwr();
+	if(output_node->tail != output_node){
+		this->curr_sol_noise_pwr = this->output_node->tail->get_pwr();
+	}
+	else{
+		this->curr_sol_noise_pwr = this->output_node->get_pwr();
+	}
+
+
+	std::clog << std::endl;
 }
 
 double Simulator::try_solution(std::vector<bitwidth_config>& proposed_sol){
@@ -128,17 +135,26 @@ double Simulator::try_solution(std::vector<bitwidth_config>& proposed_sol){
 	}
 
 	// Save noise power
-	return this->output_node->get_pwr();
+	// return this->output_node->get_pwr();
+	if(output_node->tail != output_node){
+		return this->output_node->tail->get_pwr();
+	}
+	else{
+		return this->output_node->get_pwr();
+	}
+
 }
 
 void Simulator::print(){
-	// std::cout << "Solution: \n(" <<  10.0*std::log10( this->output_sig_pwr / this->curr_sol_noise_pwr ) << " dB) { \n";
-	std::cout << "Solution: \n(" << this->curr_sol_noise_pwr << ") { \n";
-	for(int i = 0; i < this->curr_solution.size() - 1; i++){
-		std::cout << "\t" << this->curr_solution[i].n->label << ": " << this->curr_solution[i].bitwidth << ", \n";
+	// std::clog << "Solution: \n(" <<  10.0*std::log10( this->output_sig_pwr / this->curr_sol_noise_pwr ) << " dB) { \n";
+	if(this->curr_solution.size() != 0){
+		std::clog << "Solution: \n(" << this->curr_sol_noise_pwr << ", " << 10.0*std::log10( this->output_sig_pwr / this->curr_sol_noise_pwr ) << " dB) { \n";
+		for(int i = 0; i < this->curr_solution.size() - 1; i++){
+			std::clog << "\t" << this->curr_solution[i].n->label << ": " << this->curr_solution[i].bitwidth << ", \n";
+		}
+		std::clog << "\t" << this->curr_solution[this->curr_solution.size() - 1].n->label << ": " << this->curr_solution[this->curr_solution.size() - 1].bitwidth << std::endl;
+		std::clog << "}\n";
 	}
-	std::cout << "\t" << this->curr_solution[this->curr_solution.size() - 1].n->label << ": " << this->curr_solution[this->curr_solution.size() - 1].bitwidth << std::endl;
-	std::cout << "}\n";
 }
 
 void disp_progress_bar(int curr, int tot_time){
@@ -146,15 +162,15 @@ void disp_progress_bar(int curr, int tot_time){
 
 	int barWidth = 40;
 
-	std::cout << "[";
+	std::clog << "[";
 	int pos = barWidth * progress;
 	for (int i = 0; i < barWidth; ++i) {
-		if (i < pos) std::cout << "=";
-		else if (i == pos) std::cout << ">";
-		else std::cout << " ";
+		if (i < pos) std::clog << "=";
+		else if (i == pos) std::clog << ">";
+		else std::clog << " ";
 	}
-	std::cout << "] " << int(progress * 100.0) << " %\r";
-	std::cout.flush();
+	std::clog << "] " << int(progress * 100.0) << " %\r";
+	std::clog.flush();
 
 }
 
@@ -169,11 +185,11 @@ void Simulator::run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters){
 	this->initialize(n);
 	double tgt_noise_pwr = this->output_sig_pwr / std::pow(10.0, tgt_snr / 10.0);
 	
-	std::cout << std::endl;
-	std::cout << "Running Simulated Annealing " << "(SNR = " << tgt_snr << " dB) ..." << std::endl;
-	std::cout << "  Target noise power: " << tgt_noise_pwr << std::endl;
-	std::cout << "  Initial noise power: " << this->curr_sol_noise_pwr << std::endl;
-	std::cout << std::endl;
+	std::clog << std::endl;
+	std::clog << "Running Simulated Annealing " << "(SNR = " << tgt_snr << " dB) ..." << std::endl;
+	std::clog << "  Target noise power: " << tgt_noise_pwr << std::endl;
+	std::clog << "  Initial noise power: " << this->curr_sol_noise_pwr << std::endl;
+	std::clog << std::endl;
 
 	for(int iter = 0; iter < tot_iters; iter++){
 		// std::clog << "[" << iter << "/" << tot_iters << "] ";
@@ -189,16 +205,16 @@ void Simulator::run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters){
 			if(prop_sol_noise_pwr > curr_sol_noise_pwr){
 				this->curr_solution = proposed_sol;
 				curr_sol_noise_pwr = prop_sol_noise_pwr;
-				// std::cout << "[" << iter << "] " << "{" << temperature << "} ";
+				// std::clog << "[" << iter << "] " << "{" << temperature << "} ";
 				// this->print();
 			}
 			else{
-				// std::cout << "Probability of accept: " << std::exp((prop_sol_noise_pwr - curr_sol_noise_pwr) / temperature) << std::endl;
+				// std::clog << "Probability of accept: " << std::exp((prop_sol_noise_pwr - curr_sol_noise_pwr) / temperature) << std::endl;
 				if (std::exp((prop_sol_noise_pwr - curr_sol_noise_pwr) / temperature) >= this->real_dist(this->mt) ){
 					this->curr_solution = proposed_sol;
 					curr_sol_noise_pwr = prop_sol_noise_pwr;
-					// std::cout << "LUCKY ";
-					// std::cout << "[" << iter << "] " << "{" << temperature << "} ";
+					// std::clog << "LUCKY ";
+					// std::clog << "[" << iter << "] " << "{" << temperature << "} ";
 					// this->print();
 				}
 			}
@@ -209,7 +225,7 @@ void Simulator::run_sim_anneal(dfg_node* n, double tgt_snr, int tot_iters){
 		temperature = 0.01 * temperature;
 	}
 
-	std::cout << std::endl << std::endl;
+	std::clog << std::endl << std::endl;
 
 	// print();
 }
@@ -234,7 +250,7 @@ void Simulator::run_sim(dfg_node* n){
 
 
 	this->output_sig_pwr = this->output_node->get_pwr();
-	std::cout << "Output power is: " << this->output_sig_pwr << std::endl;
+	std::clog << "Output power is: " << this->output_sig_pwr << std::endl;
 
 
 	if(this->curr_solution.size() != 0){
@@ -272,17 +288,24 @@ void Simulator::run_sim(dfg_node* n){
 		std::clog << "DONE" << std::endl;;
 
 		// Save power
-		this->curr_sol_noise_pwr = this->output_node->get_pwr();
+		if(output_node->tail != output_node){
+			this->curr_sol_noise_pwr = this->output_node->tail->get_pwr();
+		}
+		else{
+			this->curr_sol_noise_pwr = this->output_node->get_pwr();
+		}
+		// std::clog << "\n" << 10.0*std::log10(this->output_sig_pwr / this->curr_sol_noise_pwr) << " dB";
 	}
 
-	std::cout << std::endl;
+	std::clog << std::endl;
 }
 
 std::vector<bitwidth_config> Simulator::get_neighbour(){
 	std::vector<bitwidth_config> proposed_sol(this->curr_solution);
 	int rand_int = this->int_dist(this->mt);
 
-	
+	// THis has a bug that what if all the bitwidths are 1 and that is
+	//   actually the solution
 	while(proposed_sol[rand_int].bitwidth == 1){
 		rand_int = this->int_dist(this->mt);
 	}
@@ -298,7 +321,7 @@ std::vector<bitwidth_config> Simulator::get_neighbour(){
 }
 
 void Simulator::propagate_coeffs(){
-	std::clog << "Propagating coefficients.... \n";
+	// std::clog << "Propagating coefficients.... \n";
 	std::deque<dfg_node*> q;
 
 	// std::clog << "    " << "t = ";
@@ -309,7 +332,7 @@ void Simulator::propagate_coeffs(){
 		// if((curr_timestamp + 1) % 10 == 0){
 		// 	std::clog << std::endl << "    " << "\t";
 		// }
-		disp_progress_bar(curr_timestamp, this->tot_sim_steps);
+		// disp_progress_bar(curr_timestamp, this->tot_sim_steps);
 		q.push_back(this->head);
 		
 		dfg_node* curr_node;
@@ -317,7 +340,7 @@ void Simulator::propagate_coeffs(){
 			curr_node = q.front();
 
 			if(curr_node->t == CONST || curr_node->t == DELAY || curr_node->t == INPUT_SIGNAL || curr_node->t == INPUT_NOISE || curr_node->node_args_ready(curr_timestamp)){
-				// std::cout << "[" << curr_timestamp << "] Processing " << curr_node->label << std::endl;
+				// std::clog << "[" << curr_timestamp << "] Processing " << curr_node->label << std::endl;
 				curr_node->process(curr_timestamp);
 				q.pop_front();
 				for(int i = 0; i < curr_node->next_nodes.size(); i++){
@@ -349,10 +372,10 @@ void Simulator::propagate_coeffs(){
 			}
 		}
 
-		// std::cout << "---------" << std::endl;
+		// std::clog << "---------" << std::endl;
 	}
 
-	std::clog << "DONE" << std::endl;
+	// std::clog << "\nDONE SIMULATION" << std::endl;
 	// std::clog << std::endl;
 
 }

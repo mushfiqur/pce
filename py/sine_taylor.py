@@ -12,7 +12,7 @@ bitwidth = 1
 size = 1000000
 
 x = np.random.uniform(low=-1, high=1, size=size)
-c1 = 1.0/6.0
+c1 = -1.0/6.0
 
 #### FLOATING POINT SIM
 flt_x = x
@@ -24,10 +24,10 @@ flt_sin_x = flt_x - flt_x_frac
 # np.divide(flt_sin_x, flt_x, out=np.zeros_like(flt_sin_x), where=flt_x!=0)
 
 #### FIXED POINT SIM
-fxp_x = quantize(x, 15)                             ## matlab suggested: 15 (14) vs. my suggestion: 16 (15)
-fxp_x_2 = quantize(fxp_x * fxp_x, 12)               ## matlab suggested: 16 (15) vs. my suggestion: 13 (12)
-fxp_x_3 = quantize(fxp_x_2 * fxp_x, 14)             ## matlab suggested: 15 (14) vs. my suggestion: 15 (14)
-fxp_x_frac = quantize(fxp_x_3 * c1, 15)             ## matlab suggested: 17 (17) vs. my suggestion: 17 (15)
+fxp_x = quantize(x, 7)                             ## matlab suggested: 15 (14) vs. my suggestion: 16 (15)
+fxp_x_2 = quantize(fxp_x * fxp_x, 4)               ## matlab suggested: 16 (15) vs. my suggestion: 13 (12)
+fxp_x_3 = quantize(fxp_x_2 * fxp_x, 3)             ## matlab suggested: 15 (14) vs. my suggestion: 15 (14)
+fxp_x_frac = quantize(fxp_x_3 * c1, 5)             ## matlab suggested: 17 (17) vs. my suggestion: 17 (15)
 # fxp_sin_x = quantize( fxp_x - fxp_x_frac, 9)      ## tot:              63 (60)                    61 (56)
 fxp_sin_x = fxp_x - fxp_x_frac
 
@@ -41,12 +41,13 @@ fxp_sin_x = fxp_x - fxp_x_frac
 }
 '''
 #### RESULTS
-sig_pwr = 1.0/3.0
+sig_pwr = np.mean(np.square(flt_sin_x))
 noise_pwr = np.mean(np.square(flt_sin_x - fxp_sin_x))
 
 print("flt_sin_x - fxp_sin_x: {0}".format(noise_pwr))
 print("SNR (dB): {0}".format(10.0 * np.log10(sig_pwr / noise_pwr)))
 
+exit()
 '''
 With 1000000 samples, Matlab suggested this config:
 {
@@ -95,7 +96,7 @@ print("Actual var: {0}".format(np.mean(np.square(y))))
 print("Predicted var: {0}".format(np.mean(np.square(y_pce))))
 
 
-plt.hist(y, bins=1000, density=True)
-plt.hist(y_pce, bins=1000, density=True)
-plt.show()
+# plt.hist(y, bins=1000, density=True)
+# plt.hist(y_pce, bins=1000, density=True)
+# plt.show()
 exit()

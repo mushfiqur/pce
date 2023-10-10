@@ -1,7 +1,6 @@
 #include "../include/BasisPolys.h"
 
 BasisPolySet::BasisPolySet(RandVarDist dist_type){
-	this->dist_t = dist_type;
 	this->num_vars = 0;
 	this->order = 2;
 	this->max_var_idx = -1;
@@ -42,8 +41,8 @@ void BasisPolySet::generate_polys(int order){
 	std::vector<std::vector<polynomial*>> univariate_polys(this->num_vars);
 
 	polynomial* p;
-	for(int i = 0; i < this->num_vars; i++){
-		if(this->dist_t == GAUSSIAN){
+	for(int i = 0; i < this->var_arr.size(); i++){
+		if(this->var_arr[i]->dist_type == GAUSSIAN){
 			// std::cout << "USING HERMITE POLYS" << std::endl;
 			univariate_polys[i] = std::vector<polynomial*>();
 
@@ -61,6 +60,7 @@ void BasisPolySet::generate_polys(int order){
 			p->max_exp = 1;
 			p->next = nullptr;
 			p->prev = nullptr;
+			p->var_ids_contained.push_back(this->var_arr[i]->id);
 
 			univariate_polys[i].push_back(p);
 
@@ -71,6 +71,7 @@ void BasisPolySet::generate_polys(int order){
 			p->next->m->coeff = -1.0;
 			p->next->prev = p;
 			p->max_exp = 2;
+			p->var_ids_contained.push_back(this->var_arr[i]->id);
 			
 			univariate_polys[i].push_back(p);
 /*
@@ -101,7 +102,7 @@ void BasisPolySet::generate_polys(int order){
 */
 		}
 
-		if(this->dist_t == UNIFORM){
+		else if(this->var_arr[i]->dist_type == UNIFORM){
 			// std::cout << "USING LEGENDRE POLYS" << std::endl;
 			univariate_polys[i] = std::vector<polynomial*>();
 
@@ -121,6 +122,7 @@ void BasisPolySet::generate_polys(int order){
 			p->next = nullptr;
 			p->prev = nullptr;
 			p->max_exp = 1;
+			p->var_ids_contained.push_back(this->var_arr[i]->id);
 
 			univariate_polys[i].push_back(p);
 
@@ -131,6 +133,7 @@ void BasisPolySet::generate_polys(int order){
 			p->next->m->coeff = -0.5;
 			p->next->prev = p;
 			p->max_exp = 2;
+			p->var_ids_contained.push_back(this->var_arr[i]->id);
 			
 			univariate_polys[i].push_back(p);
 	/*
@@ -184,6 +187,14 @@ void BasisPolySet::generate_polys(int order){
 
 	std::clog << " DONE" << std::endl;
 	std::clog << "    " << "Basis set has " << this->set_size << " polynomials" << std::endl;
+	for(int i = 0; i < this->var_arr.size(); i++){
+		if(this->var_arr[i]->dist_type == UNIFORM){
+			std::cout << "    " << "ζ" << this->var_arr[i]->id << " ~ UNIFORM" << std::endl;
+		}
+		else if(this->var_arr[i]->dist_type == GAUSSIAN){
+			std::cout << "    " << "ζ" << this->var_arr[i]->id << " ~ GAUSSIAN" << std::endl;
+		}
+	}
 
 }
 
@@ -213,7 +224,8 @@ void BasisPolySet::gen_exp_table(){
 				mult_poly(basis_polys[i], basis_polys[j], p1);
 				mult_poly(p1, basis_polys[k], p2);
 				
-				exp_val = expect_poly(p2, this->dist_t);
+				// exp_val = expect_poly(p2, this->dist_t);
+				exp_val = expect_poly(p2);
 
 				this->expt_table[i][j][k] = exp_val;
 				this->expt_table[i][k][j] = exp_val;
@@ -236,7 +248,8 @@ void BasisPolySet::gen_poly_expt_sqr_table(){
 	for(int i = 0; i < this->set_size; i++){
 		p = new polynomial();
 		mult_poly(this->basis_polys[i], this->basis_polys[i], p);
-		this->poly_sqr_expt[i] = expect_poly(p, this->dist_t);
+		// this->poly_sqr_expt[i] = expect_poly(p, this->dist_t);
+		this->poly_sqr_expt[i] = expect_poly(p);
 		delete p;		
 	}
 }
@@ -245,7 +258,8 @@ void BasisPolySet::gen_poly_expt_table(){
 	this->poly_expt = std::vector<double>(basis_polys.size(), 0.0);
 
 	for(int i = 0; i < this->set_size; i++){
-		this->poly_expt[i] = expect_poly(this->basis_polys[i], this->dist_t);
+		// this->poly_expt[i] = expect_poly(this->basis_polys[i], this->dist_t);
+		this->poly_expt[i] = expect_poly(this->basis_polys[i]);
 	}
 }
 
@@ -272,22 +286,33 @@ int BasisPolySet::get_var_idx(int id){
 	return -1;
 }
 
+int BasisPolySet::get_var_idx(int id1, int id2){
+	for(int i = 0; i < this->basis_polys.size(); i++){
+		if(this->basis_polys[i]->var_ids_contained.size() == 2){
+			if( (this->basis_polys[i]->var_ids_contained[0] == id1 || this->basis_polys[i]->var_ids_contained[0] == id2) &&
+			    (this->basis_polys[i]->var_ids_contained[1] == id1 || this->basis_polys[i]->var_ids_contained[1] == id2)){
+					return i;
+				}
+		}
+	}
+}
+
 void BasisPolySet::print(){
 	polynomial* p;
 
 	for(int i = 0; i < this->set_size; i++)	{
-		std::cout << "P" << i << ": ";
+		std::clog << "P" << i << ": ";
 		this->basis_polys[i]->print();
-		std::cout << std::endl;
+		std::clog << std::endl;
 
-		std::cout << "E[P" << i << "]: ";
-		std::cout << expect_poly(this->basis_polys[i], this->dist_t);
-		std::cout << std::endl;
+		std::clog << "E[P" << i << "]: ";
+		std::clog << expect_poly(this->basis_polys[i]);
+		std::clog << std::endl;
 
-		std::cout << "E[(P" << i << ")^2]: ";
-		std::cout << poly_sqr_expt[i] << std::endl;
+		std::clog << "E[(P" << i << ")^2]: ";
+		std::clog << poly_sqr_expt[i] << std::endl;
 		
-		std::cout << std::endl;
+		std::clog << std::endl;
 	}
 }
 

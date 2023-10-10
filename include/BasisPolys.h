@@ -12,6 +12,7 @@
 class BasisPolySet {
 	public:
 	std::vector<var*> var_arr;
+	std::vector<var*> noise_vars;
 	std::vector<polynomial*> basis_polys;
 
 	std::vector<double> poly_sqr_expt;
@@ -21,7 +22,6 @@ class BasisPolySet {
 	int num_vars;
 	int order;
 	int set_size;
-	RandVarDist dist_t;
 
 	BasisPolySet(RandVarDist dist_type);
 	~BasisPolySet();
@@ -31,6 +31,7 @@ class BasisPolySet {
 	void regenerate_polys(int order);
 	
 	int get_var_idx(int id);
+	int get_var_idx(int id1, int id2);
 	int get_new_var_id();
 	
 	void print();

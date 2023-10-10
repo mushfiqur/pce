@@ -1,10 +1,20 @@
 #include "../include/BasisPolys.h"
 #include "../include/utils.h"
 
-var::var(double b, double a, int id){
+var::var(int id){
+	this->id = id;
+}
+
+void var::init_uniform_var(double a, double b){
 	this->a = a <= b ? a : b;
 	this->b = b > a ? b : a;
-	this->id = id;
+	this->dist_type = UNIFORM;
+}
+
+void var::init_gaussian_var(double mean, double variance){
+	this->mean = mean;
+	this->variance = variance;
+	this->dist_type = GAUSSIAN;
 }
 
 polynomial::polynomial(){
@@ -89,7 +99,7 @@ void monomial::print(){
 	std::clog << this->coeff;
 
 	for(int i = 0; i < this->arr.size(); i++){
-		std::clog << "(x" << this->arr[i]->v->id << ")^(" << this->arr[i]->exp << ")";
+		std::clog << "(ζ" << this->arr[i]->v->id << ")^(" << this->arr[i]->exp << ")";
 	}
 }
 
@@ -159,6 +169,15 @@ void tensor_prod(std::vector<polynomial*>& set_a, std::vector<polynomial*>& set_
 				p = new polynomial();
 				p->max_exp = set_a[i]->max_exp + set_b[j]->max_exp;
 				mult_poly(set_a[i], set_b[j], p);
+				
+				for(int n = 0; n < set_a[i]->var_ids_contained.size(); n++){
+					p->var_ids_contained.push_back(set_a[i]->var_ids_contained[n]);
+				}
+				
+				for(int n = 0; n < set_b[j]->var_ids_contained.size(); n++){
+					p->var_ids_contained.push_back(set_b[j]->var_ids_contained[n]);
+				}
+				
 				result.push_back(p);
 			}
 		}
@@ -228,12 +247,12 @@ void mult_mono(monomial* a, monomial* b, monomial* result){
 	}
 }
 
-double expect_poly(polynomial* p, RandVarDist dist_type){
+double expect_poly(polynomial* p){
 	double ret = 0.0;
 
 	polynomial* p_iter = p;
 	while (p_iter != nullptr){
-		ret += expect_mono(p_iter->m, dist_type);
+		ret += expect_mono(p_iter->m);
 
 		p_iter = p_iter->next;
 	}
@@ -242,7 +261,7 @@ double expect_poly(polynomial* p, RandVarDist dist_type){
 	return ret;
 }
 
-double expect_mono(monomial* m, RandVarDist dist_type){
+double expect_mono(monomial* m){
 	double ret = m->coeff;
 	for(int i = 0; i < m->arr.size(); i++){
 		if(m->arr[i]->exp%2 != 0){
@@ -250,15 +269,15 @@ double expect_mono(monomial* m, RandVarDist dist_type){
 			break;
 		}
 		else{
-			ret *= expect_term(m->arr[i], dist_type);
+			ret *= expect_term(m->arr[i]);
 		}
 	}
 
 	return ret;
 }
 
-double expect_term(term* t, RandVarDist dist_type){
-	if(dist_type == GAUSSIAN){
+double expect_term(term* t){
+	if(t->v->dist_type == GAUSSIAN){
 		if(t->exp % 2 == 0){
 			int k = t->exp / 2;
 			double numerator = factorial(2*k);
@@ -270,7 +289,7 @@ double expect_term(term* t, RandVarDist dist_type){
 			return 0.0;
 		}
 	}
-	else {
+	else if (t->v->dist_type == UNIFORM) {
 		return (std::pow(t->v->b, t->exp + 1) - std::pow(t->v->a, t->exp + 1)) / ((t->v->b - t->v->a) * (t->exp + 1));
 	}
 }

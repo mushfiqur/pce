@@ -41,30 +41,32 @@ for i in range(size):
 
     y[i] = a[i] + y_d_c[i]
 
-print("Power: {0}".format(np.mean(np.square(y))))
-exit()
 #### FIXED POINT SIM
-fxp_x = quantize(x, 3)
+x_bitwidth    = 4
+x_c_bitwidth  = 6
+y_dc_bitwidth = 7
+
+fxp_x = quantize(x, x_bitwidth)
 
 for i in range(size):
-    fxp_x_c[i] = quantize(fxp_x[i] * c2, 6)
+    fxp_x_c[i] = quantize(fxp_x[i] * c2, x_c_bitwidth)
     
     if(i - 1 < 0):
         fxp_y_d[i] = 0
     else:
         fxp_y_d[i] = fxp_y[i-1]
     
-    fxp_y_d_c[i] = quantize(fxp_y_d[i] * c1, 3)
+    fxp_y_d_c[i] = quantize(fxp_y_d[i] * c1, y_dc_bitwidth)
 
     fxp_y[i] = fxp_x_c[i] + fxp_y_d_c[i]
 
 
 #### RESULTS
-# sig_pwr = np.mean(np.square(x))
-sig_pwr = 1.0/3.0
+
+sig_pwr = np.mean(np.square(y))
 noise_pwr = np.mean(np.square(y - fxp_y))
 
-print("flt_out - fxp_out: {0}".format(noise_pwr))
+print("flt_sin_x - fxp_sin_x: {0}".format(noise_pwr))
 print("SNR (dB): {0}".format(10.0 * np.log10(sig_pwr / noise_pwr)))
 
 '''

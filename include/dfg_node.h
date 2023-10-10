@@ -168,19 +168,21 @@ class input_node : public dfg_node{
 	void set_bitwidth(int width) override;
 
 	void add_signal(WaveType wave, double freq);
-	void add_dist(int num_rand_vars);
+	void add_dist(RandVarDist dist_type, int num_rand_vars);
 };
 
 class noise_node : public dfg_node{
 	private:
-	var* v;
+	// var* v;
 	BasisPolySet* bp_set_ptr;
 
 	std::mt19937 mt;
 	std::uniform_real_distribution<double> dist;
 
 	public:
-	noise_node(BasisPolySet* bp_set, int node_id, std::string label);
+	std::vector<var*> vars;
+	
+	noise_node(RandVarDist dist_type, int num_dists, BasisPolySet* bp_set, int node_id, std::string label);
 	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
 	void process(int curr_timestamp) override;
 	void init();

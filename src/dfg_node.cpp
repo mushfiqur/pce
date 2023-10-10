@@ -137,7 +137,8 @@ void dfg_node::set_bitwidth(int width){
 	if(this->tail == this){
 		int n_noise_id = this->bp_set_ptr->get_new_var_id();
 		std::string lbl = "n" + std::to_string(n_noise_id);
-		noise_node* n_noise = new noise_node(this->bp_set_ptr, n_noise_id, lbl);
+		noise_node* n_noise = new noise_node(UNIFORM, 1, this->bp_set_ptr, n_noise_id, lbl);
+		
 		n_noise->bitwidth = width;
 
 		this->tail = new add_node(this->bp_set_ptr, this->label + "_n");
@@ -389,8 +390,49 @@ void input_node::process(int curr_timestamp){
 }
 
 void input_node::set_bitwidth(int width){
-	// this->bitwidth = width;
-	dfg_node::set_bitwidth(width);
+	this->bitwidth = width;
+	// dfg_node::set_bitwidth(width);
+
+	this->bitwidth = width;
+
+	if(this->tail == this){
+		int n_noise_id = this->bp_set_ptr->get_new_var_id();
+		std::string lbl = "n" + std::to_string(n_noise_id);
+		noise_node* n_noise = new noise_node(UNIFORM, this->vars.size(), this->bp_set_ptr, n_noise_id, lbl);
+		n_noise->bitwidth = width;
+
+		this->tail = new add_node(this->bp_set_ptr, this->label + "_n");
+		this->tail->lhs = this;
+		this->tail->rhs = n_noise;
+
+		for(int i = 0; i < this->next_nodes.size(); i++){
+			this->tail->add_next_node(this->next_nodes[i]);
+
+			if(this->next_nodes[i]->head->lhs == this){
+				this->next_nodes[i]->head->lhs = this->tail;
+			}
+
+			if(this->next_nodes[i]->head->rhs == this){
+				this->next_nodes[i]->head->rhs = this->tail;
+			}
+
+			for(int j = 0; j < this->next_nodes[i]->prev_nodes.size(); j++){
+				if(this->next_nodes[i]->prev_nodes[j]->label == this->label){
+					this->next_nodes[i]->prev_nodes.erase(this->next_nodes[i]->prev_nodes.begin() + j);
+				}
+			}
+		}
+		this->next_nodes.clear();
+
+		this->add_next_node(this->tail);
+		n_noise->add_next_node(this->tail);
+	}
+	else{
+		this->tail->rhs->set_bitwidth(width);	
+	}
+
+
+
 	this->dist = std::uniform_real_distribution<double>(0.0, std::pow(2.0, -1.0*width));
 }
 
@@ -400,10 +442,18 @@ void input_node::add_signal(WaveType wave, double freq){
 	this->cfg.has_signal = true;
 }
 
-void input_node::add_dist(int num_rand_vars){
+void input_node::add_dist(RandVarDist dist_type, int num_rand_vars){
 	var* v;
 	for(int i = 0; i < num_rand_vars; i++){
-		v = new var(1, -1, this->bp_set_ptr->get_new_var_id());
+		v = new var(this->bp_set_ptr->get_new_var_id());
+		
+		if(dist_type == UNIFORM){
+			v->init_uniform_var(-1, 1);
+		}
+		else if(dist_type == GAUSSIAN){
+			v->init_gaussian_var(0.0, 1.0);
+		}
+
 		this->bp_set_ptr->add_variable(v);
 		this->vars.push_back(v);
 	}
@@ -414,27 +464,45 @@ void input_node::add_dist(int num_rand_vars){
 
 ///////////////////////////////////////////////////
 
-noise_node::noise_node(BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT_NOISE, bp_set, label, node_id){
+noise_node::noise_node(RandVarDist dist_type, int num_dists, BasisPolySet* bp_set, int node_id, std::string label) : dfg_node(INPUT_NOISE, bp_set, label, node_id){
 	this->bp_set_ptr = bp_set;
 	
 	bool var_exists = false;
 	for(int i = 0; i < bp_set->var_arr.size(); i++){
 		if(bp_set->var_arr[i]->id == node_id){
 			var_exists = true;
-			this->v = bp_set->var_arr[i];
+			this->vars.push_back(bp_set->var_arr[i]);
 			break;
 		}
 	}
 
+
 	if(!var_exists){
-		var* v = new var(1, -1, node_id);
-		bp_set->add_variable(v);
-		this->v = v;
+		var* v;
+
+		for(int i = 0; i < num_dists; i++){
+			if(i == 0){
+				v = new var(node_id);
+			}
+			else{
+				v = new var(this->bp_set_ptr->get_new_var_id());
+			}
+
+			if(dist_type == UNIFORM){
+				v->init_uniform_var(-1, 1);
+			}
+			else if(dist_type == GAUSSIAN){
+				v->init_gaussian_var(0.0, 1.0);
+			}
+
+			
+			bp_set->add_variable(v);
+			bp_set->noise_vars.push_back(v);
+			this->vars.push_back(v);
+
+		}
 	}
 	
-	std::random_device rd;
-	this->mt = std::mt19937(rd());
-	this->dist = std::uniform_real_distribution<double>(this->v->a, this->v->b);
 };
 
 void noise_node::init(){
@@ -450,13 +518,17 @@ void noise_node::set_sim_params(int tot_sim_steps, int mc_samples, int basis_set
 		
 		for(int t = 0; t < this->pce_coeffs.size(); t++){
 		// for(int t = 0; t < 10; t++){
-			// TODO: line below uncommented represents a truncation quantizer
-			//         commenting it out makes it a rounding quantizer
-			//        Implement enum to differentiate
-			if(t % 2 == 0){
+			// THIS  IF STATEMENT IS A HACK FOR PLLs ONLY!
+			// if(t % 2 == 0){
+				// TODO: line below uncommented represents a truncation quantizer
+				//         commenting it out makes it a rounding quantizer
+				//        Implement enum to differentiate
 				// this->pce_coeffs[t][0] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
-				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
-			}
+
+				// this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->v->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+
+				this->pce_coeffs[t][this->bp_set_ptr->get_var_idx(this->vars[t % this->vars.size()]->id)] = std::pow(2.0, -1.0*this->bitwidth) / 2.0;
+			// }
 		}
 	}
 	else{

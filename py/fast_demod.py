@@ -11,62 +11,104 @@ size = 100000
 
 iters = 10
 
-I = np.random.uniform(low=-1.0, high=1.0, size=size)
-Q = np.random.uniform(low=-1.0, high=1.0, size=size)
-
 c1 = 0.5
 
-I_d1 = np.zeros(size)
-I_d2 = np.zeros(size)
-
-Q_d1 = np.zeros(size)
-Q_d2 = np.zeros(size)
-
-I_bar = np.zeros(size)
-Q_bar = np.zeros(size)
-
-a = np.zeros(size)
-b = np.zeros(size)
-
-pre_scale = np.zeros(size)
-out = np.zeros(size)
+#### FLOATING POINT SIM
+flt_I = np.random.uniform(low=-1.0, high=1.0, size=size)
+flt_Q = np.random.uniform(low=-1.0, high=1.0, size=size)
+flt_I_d1 = np.zeros(size)
+flt_I_d2 = np.zeros(size)
+flt_Q_d1 = np.zeros(size)
+flt_Q_d2 = np.zeros(size)
+flt_I_bar = np.zeros(size)
+flt_Q_bar = np.zeros(size)
+flt_a = np.zeros(size)
+flt_b = np.zeros(size)
+flt_pre_scale = np.zeros(size)
+flt_out = np.zeros(size)
 
 for n in range(size):
     if(n - 1 >= 0):
-        I_d1 = I[n-1]
-        Q_d1 = Q[n-1]
+        flt_I_d1[n] = flt_I[n-1]
+        flt_Q_d1[n] = flt_Q[n-1]
     else:
-        I_d1 = 0.0
-        Q_d1 = 0.0
+        flt_I_d1[n] = 0.0
+        flt_Q_d1[n] = 0.0
 
     if(n - 2 >= 0):
-        I_d2 = I[n-2]
-        Q_d2 = Q[n-2]
+        flt_I_d2[n] = flt_I[n-2]
+        flt_Q_d2[n] = flt_Q[n-2]
     else:
-        I_d2 = 0.0
-        Q_d2 = 0.0
+        flt_I_d2[n] = 0.0
+        flt_Q_d2[n] = 0.0
     
-    I_bar[n] = I[n] * I_d2
-    Q_bar[n] = Q[n] * Q_d2
+    flt_I_bar[n] = flt_I[n] - flt_I_d2[n]
+    flt_Q_bar[n] = flt_Q[n] - flt_Q_d2[n]
     
-    a[n] = I_d1 * Q_bar[n]
-    b[n] = Q_d1 * I_bar[n]
+    flt_a[n] = flt_I_d1[n] * flt_Q_bar[n]
+    flt_b[n] = flt_Q_d1[n] * flt_I_bar[n]
 
-    pre_scale[n] = a[n] - b[n]
-    out[n] = c1 * pre_scale[n]
+    flt_pre_scale[n] = flt_a[n] - flt_b[n]
+    flt_out[n] = flt_pre_scale[n]
 
-##-----------------------------------------------------
-x1 = np.random.uniform(low=-1.0, high=1.0, size=size)
-x2 = np.random.uniform(low=-1.0, high=1.0, size=size)
-x3 = np.random.uniform(low=-1.0, high=1.0, size=size)
-x4 = np.random.uniform(low=-1.0, high=1.0, size=size)
-x5 = np.random.uniform(low=-1.0, high=1.0, size=size)
-x6 = np.random.uniform(low=-1.0, high=1.0, size=size)
+#### FIXED POINT SIM
+fxp_I = np.zeros(size)
+fxp_Q = np.zeros(size)
+fxp_I_d1 = np.zeros(size)
+fxp_I_d2 = np.zeros(size)
+fxp_Q_d1 = np.zeros(size)
+fxp_Q_d2 = np.zeros(size)
+fxp_I_bar = np.zeros(size)
+fxp_Q_bar = np.zeros(size)
+fxp_a = np.zeros(size)
+fxp_b = np.zeros(size)
+fxp_pre_scale = np.zeros(size)
+fxp_out = np.zeros(size)
 
-# pce_expr = 0.5*x3*x5 - 0.5*x2*x6 + 0.5*x2*x4 - 0.5*x1*x5
-# pce_pwr = np.mean(np.square(pce_expr))
+i_bitwidth   = 18
+q_bitwidth   = 18
+a_bitwidth   = 16
+b_bitwidth   = 16
 
-pce_pwr = 1.0/9.0
-out_pwr = np.mean(np.square(out))
+fxp_I = quantize(flt_I, i_bitwidth)
+fxp_Q = quantize(flt_Q, q_bitwidth)
 
-print("MC - PCE: {0}".format(out_pwr - pce_pwr))
+# fxp_I = flt_I
+# fxp_Q = flt_Q
+
+for n in range(size):
+    if(n - 1 >= 0):
+        fxp_I_d1[n] = fxp_I[n-1]
+        fxp_Q_d1[n] = fxp_Q[n-1]
+    else:
+        fxp_I_d1[n] = 0.0
+        fxp_Q_d1[n] = 0.0
+
+    if(n - 2 >= 0):
+        fxp_I_d2[n] = fxp_I[n-2]
+        fxp_Q_d2[n] = fxp_Q[n-2]
+    else:
+        fxp_I_d2[n] = 0.0
+        fxp_Q_d2[n] = 0.0
+    
+    fxp_I_bar[n] = fxp_I[n] - fxp_I_d2[n]
+    fxp_Q_bar[n] = fxp_Q[n] - fxp_Q_d2[n]
+    
+    fxp_a[n] = quantize(fxp_I_d1[n] * fxp_Q_bar[n], a_bitwidth)
+    fxp_b[n] = quantize(fxp_Q_d1[n] * fxp_I_bar[n], b_bitwidth)
+
+    # fxp_a[n] = fxp_I_d1[n] * fxp_Q_bar[n]
+    # fxp_b[n] = fxp_Q_d1[n] * fxp_I_bar[n]
+
+
+    fxp_pre_scale[n] = fxp_a[n] - fxp_b[n]
+    fxp_out[n] = fxp_pre_scale[n]
+    # fxp_out[n] = c1 * fxp_pre_scale[n]
+
+sig_pwr = np.mean(np.square(flt_out))
+noise_pwr = np.mean(np.square(flt_out - fxp_out))
+
+print("flt_sin_x - fxp_sin_x: {0}".format(noise_pwr))
+print("SNR (dB): {0}".format(10.0 * np.log10(sig_pwr / noise_pwr)))
+
+

@@ -2,20 +2,13 @@ int main(){
 	BasisPolySet basis_poly = BasisPolySet(UNIFORM);
 	
 	// Define Netlist
-	const_node c1(&basis_poly, "c1");
-
-	input_node I(&basis_poly, 1, "I");
+	input_node I(&basis_poly, "I");
 	delay_node I_d_1(&basis_poly, "I_d_1");
 	delay_node I_d_2(&basis_poly, "I_d_2");
-	// input_node I_d_1(&basis_poly, 2, "I_d_1");
-	// input_node I_d_2(&basis_poly, 3, "I_d_2");
 
-	input_node Q(&basis_poly, 2, "Q");
+	input_node Q(&basis_poly, "Q");
 	delay_node Q_d_1(&basis_poly, "Q_d_1");
 	delay_node Q_d_2(&basis_poly, "Q_d_2");
-
-	// input_node Q_d_1(&basis_poly, 5, "Q_d_1");
-	// input_node Q_d_2(&basis_poly, 6, "Q_d_2");
 
 	sub_node I_bar(&basis_poly, "i_bar");
 	sub_node Q_bar(&basis_poly, "i_bar");
@@ -23,12 +16,12 @@ int main(){
 	mult_node a(&basis_poly, "a");
 	mult_node b(&basis_poly, "b");
 
-	sub_node pre_scale(&basis_poly, "pre_scale");
+	sub_node out(&basis_poly, "f");
 
-	mult_node out(&basis_poly, "out");
 
 	// Connect/Init Netlist
-	c1.init(0.5);
+	I.add_dist(UNIFORM, 3);
+	Q.add_dist(UNIFORM, 3);
 	
 	I_d_1.init(&I);
 	I_d_2.init(&I_d_1);
@@ -41,9 +34,7 @@ int main(){
 	a.init(&I_d_1, &Q_bar);
 	b.init(&Q_d_1, &I_bar);
 
-	pre_scale.init(&a, &b);
-
-	out.init(&pre_scale, &c1);
+	out.init(&a, &b);
 
 	// Generate Basis Polynomials
 	basis_poly.generate_polys(2);
@@ -53,7 +44,6 @@ int main(){
 	sim.add_basis_poly_set(basis_poly);
 
 	// Add nodes to simulator
-	sim.add_node(c1);
 	sim.add_node(I);
 	sim.add_node(I_d_1);
 	sim.add_node(I_d_2);
@@ -64,35 +54,38 @@ int main(){
 	sim.add_node(Q_bar);
 	sim.add_node(a);
 	sim.add_node(b);
-	sim.add_node(pre_scale);
 	sim.add_node(out);
 	
 	// Set bitwidths
-	// sim.set_bitwidth(I, 4);
-	// sim.set_bitwidth(Q, 4);
-	// sim.set_bitwidth(a, 4);
-	// sim.set_bitwidth(b, 4);
-	// sim.set_bitwidth(c, 4);
-	// sim.set_bitwidth(d, 4);
+	sim.set_bitwidth(I,       6);
+	// sim.set_bitwidth(I_d_1,   32);
+	// sim.set_bitwidth(I_d_2,   32);
+	sim.set_bitwidth(Q,       7);
+	// sim.set_bitwidth(Q_d_1,   32);
+	// sim.set_bitwidth(Q_d_2,   32);
+	sim.set_bitwidth(a,       7);
+	sim.set_bitwidth(b,       7);
 
 	// Set output node
 	sim.set_output_node(out);
 
 	// Run Sim
-	int tot_sim_steps = 1;
-	// sim.set_sim_params(MONTE_CARLO, tot_sim_steps);
-	// sim.run_sim(&pll_in);
+	int tot_sim_steps = 4;
 
+	
 	sim.set_sim_params(PCE, tot_sim_steps);
+	// sim.run_sim_anneal(&I, 100.0, 10000);
 	sim.run_sim(&I);
 
-	// e.print();
-	// f.print();
+	sim.add_plot_node(out);
+	sim.plot();
 
-	out.print();
-	out.print_pwr();
-	// sim.add_plot_node(g);
-	// sim.plot();
+	// std::cout << "\n(" << sim.curr_sol_noise_pwr << ") { \n";
+	// for(int i = 0; i < sim.curr_solution.size() - 1; i++){
+	// 	std::cout << "\t" << sim.curr_solution[i].n->label << ": " << sim.curr_solution[i].bitwidth << ", \n";
+	// }
+	// std::cout << "\t" << sim.curr_solution[sim.curr_solution.size() - 1].n->label << ": " << sim.curr_solution[sim.curr_solution.size() - 1].bitwidth << std::endl;
+	// std::cout << "}\n";
 
 	return 0;
 }

@@ -72,6 +72,7 @@ class fir_node : public dfg_node {
 	std::vector<double> filt_coeffs;
 	double sum_coeffs;
 	double sum_sqr_coeffs;
+	noise_node* n_node;
 	
 	public:
 	fir_node(BasisPolySet* bp_set, std::string label);
@@ -80,6 +81,8 @@ class fir_node : public dfg_node {
 	void process(int curr_timestamp) override;
 	void set_bitwidth(int width) override;
 	void set_sim_params(int tot_sim_steps, int mc_samples, int basis_set_size, SimType sim_type) override;
+	// void remove_signal_component() override;
+	// void remove_signal_component();
 	void print(bool print_last=false);
 
 	void add_dist(int num_rand_vars);

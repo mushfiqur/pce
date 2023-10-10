@@ -12,9 +12,17 @@ class var {
 	int id;
 	double b;
 	double a;
+	double mean;
+	double variance;
+
+	RandVarDist dist_type;
 
 	public:
-	var(double b, double a, int id);
+	var(int id);
+
+	void init_uniform_var(double a, double b);
+
+	void init_gaussian_var(double mean, double variance);
 };
 
 class term {
@@ -42,6 +50,7 @@ class polynomial{
 	polynomial* next;
 	polynomial* prev;
 	int max_exp;
+	std::vector<int> var_ids_contained;
 
 	void print();
 	polynomial* copy();
@@ -56,8 +65,8 @@ void tensor_prod(std::vector<polynomial*>& set_a, std::vector<polynomial*>& set_
 void mult_poly(polynomial* p, polynomial* q, polynomial* result);
 void mult_mono(monomial* a, monomial* b, monomial* result);
 
-double expect_poly(polynomial* p, RandVarDist dist_type);
-double expect_mono(monomial* m, RandVarDist dist_type);
-double expect_term(term* t, RandVarDist dist_type);
+double expect_poly(polynomial* p);
+double expect_mono(monomial* m);
+double expect_term(term* t);
 
 #endif

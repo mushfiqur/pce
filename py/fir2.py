@@ -10,6 +10,17 @@ sum_coeffs_sqr = 0.0
 for i in test_coeffs:
     sum_coeffs_sqr += i*i
 
+rv1 = np.random.uniform(low=-1, high=1, size=size)
+
+input = 2.3 + 1.2*rv1 + 0.3*(1.5*rv1*rv1 - 0.5)
+
+out = signal.lfilter(test_coeffs, 1.0, rv1 )
+
+plt.hist(out, bins=1000, density=True)
+plt.show()
+
+exit()
+
 rv3 = np.random.uniform(low=-1, high=1, size=size)
 rv4 = np.random.uniform(low=-1, high=1, size=size)
 rv5 = np.random.uniform(low=-1, high=1, size=size)
@@ -23,9 +34,9 @@ demod_pce = 0.0374885*rv5*rv6 + (-0.0374885)*rv4*rv6 + (-0.0374885)*rv3*rv8 + (0
 x_i = 0.0374886
 c = x_i * np.sqrt(sum_coeffs_sqr)
 
-print(c)
-print(0.0374855*np.sqrt(sum_coeffs_sqr))
-exit()
+# print(c)
+# print(0.0374855*np.sqrt(sum_coeffs_sqr))
+# exit()
 
 one_term_filtered_actual = signal.lfilter(test_coeffs, 1.0, 0.0374885*rv5*rv6)
 
@@ -46,7 +57,7 @@ one_term_predicted_var = np.mean(np.square(one_term_filtered_predicted))
 print("Actual: {0}".format(np.mean(np.square(total_filtered_actual))))
 print("Predicted: {0}".format(np.mean(np.square(total_filtered_predicted))))
 
-exit()
+# exit()
 plt.hist(one_term_filtered_actual, bins=1000, density=True, alpha=1.0, label='actual dist')
 plt.hist(one_term_filtered_predicted, bins=1000, density=True, alpha=0.8, label="predicted dist")
 plt.show()
